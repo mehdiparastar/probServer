@@ -1,5 +1,6 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { logLocationType } from "../enum/logLocationType.enum";
+import { scenarioName } from "../enum/scenarioName.enum";
 
 @Entity()
 export class Quectel {
@@ -26,6 +27,15 @@ export class Quectel {
 
     @Column({ nullable: true })
     simStatus?: string
+
+    @Column({ nullable: true })
+    activeScenario?: scenarioName
+
+    @Column({ nullable: true })
+    gpsEnabling?: string
+
+    @Column({ nullable: true })
+    isGPSActive?: string
 
     @CreateDateColumn()
     createdAt?: Date;

@@ -29,6 +29,11 @@ export class ProbController {
     return this.probService.allPortsInitializing()
   }
 
+  @Get('get-modules-status')
+  getModelesStatus() {
+    return this.probService.getModulesStatus()
+  }
+
   @Post('start')
   start(@Body() body: StartLogDto) {
     return this.probService.startLog(body.type, body.code, body.expert)
