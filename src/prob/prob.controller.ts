@@ -39,6 +39,11 @@ export class ProbController {
     return this.probService.startLog(body.type, body.code, body.expert)
   }
 
+  @Get('enableGPS')
+  enablingGPS() {
+    return this.probService.enablingGPS()
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.probService.findOne(+id);

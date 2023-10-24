@@ -4,5 +4,6 @@ export enum commands {
     getModuleIMEI = 'AT+CGSN\r\n',
     getSimStatus = 'AT+CPIN?\r\n',
     enableGPS = 'AT+QGPS=1\r\n',
+    disableGPS = 'AT+QGPSEND\r\n',
     getCurrentLoc = 'AT+QGPSLOC=2\r\n'
 }

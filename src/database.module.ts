@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { TypeOrmModule, TypeOrmModuleOptions } from "@nestjs/typeorm";
 import { Quectel } from "./prob/entities/quectel.entity";
+import { GPSData } from "./prob/entities/gps-data.entity";
 
 @Module({
     imports: [
@@ -16,7 +17,8 @@ import { Quectel } from "./prob/entities/quectel.entity";
                     password: configService.get<string>('MYSQL_PASSWORD'),
                     database: configService.get<string>('MYSQL_DB_NAME'),
                     entities: [
-                        Quectel
+                        Quectel,
+                        GPSData
                     ],
                     synchronize: true,
                     // synchronize: false,

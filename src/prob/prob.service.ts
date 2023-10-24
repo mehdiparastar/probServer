@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { CreateProbDto } from './dto/create-prob.dto';
 import { UpdateProbDto } from './dto/update-prob.dto';
 import { SerialPort } from 'serialport';
@@ -8,6 +8,7 @@ import { Repository } from 'typeorm';
 import { Quectel } from './entities/quectel.entity';
 import { commands } from './enum/commands.enum';
 import { scenarioName } from './enum/scenarioName.enum';
+import { GPSData } from './entities/gps-data.entity';
 
 const serialPortCount = 32
 
@@ -40,30 +41,31 @@ const cmsErrorPattern = {
   'isGPSActive': /AT\+QGPSLOC=2\r\r\n\+CMS ERROR: (\d+)\r\n/,
 }
 
-function convertDMStoDD(degrees, direction) {
+function convertDMStoDD(degrees: string, direction: string) {
   const d = parseFloat(degrees);
   const dd = Math.floor(d / 100) + (d % 100) / 60;
-  return direction === 'S' || direction === 'W' ? -dd : dd;
+  return direction === 'S' || direction === 'W' ? `${-dd}` : `${dd}`;
 }
+
 
 // Function to parse GGA sentence
 function parseGGA(sentence: string) {
-  const fields = (sentence.split('\n').filter(sen => sen.includes('$GPGGA')).splice(-1)[0]).split(',')
-  const time = fields[1];
-  const latitude = convertDMStoDD(fields[2], fields[3]);
-  const longitude = convertDMStoDD(fields[4], fields[5]);
-  const altitude = fields[9];
+  const fields = (sentence.split('\n').filter(sen => sen.includes('$GPGGA')).splice(-1)[0])?.split(',')
+  const time = fields && fields[1];
+  const latitude = fields && convertDMStoDD(fields[2], fields[3]);
+  const longitude = fields && convertDMStoDD(fields[4], fields[5]);
+  const altitude = fields && fields[9];
   return { time, latitude, longitude, altitude };
 }
 
 // Function to parse RMC sentence
 function parseRMC(sentence: string) {
-  const fields = (sentence.split('\n').filter(sen => sen.includes('$GPRMC')).splice(-1)[0]).split(',')
-  const time = fields[1];
-  const latitude = convertDMStoDD(fields[3], fields[4]);
-  const longitude = convertDMStoDD(fields[5], fields[6]);
-  const groundSpeed = fields[7];
-  const trackAngle = fields[8];
+  const fields = (sentence.split('\n').filter(sen => sen.includes('$GPRMC')).splice(-1)[0])?.split(',')
+  const time = fields && fields[1];
+  const latitude = fields && convertDMStoDD(fields[3], fields[4]);
+  const longitude = fields && convertDMStoDD(fields[5], fields[6]);
+  const groundSpeed = fields && fields[7];
+  const trackAngle = fields && fields[8];
   return { time, latitude, longitude, groundSpeed, trackAngle };
 }
 
@@ -282,12 +284,25 @@ const parseData = (response: string) => {
 }
 
 @Injectable()
-export class ProbService {
+export class ProbService implements OnModuleInit {
   private readonly logger = new Logger(ProbService.name);
   private serialPort: { [key: string]: SerialPort } = {};
+  private selectedGPSPort: number;
+  private selectedGPSIMEI: string;
+  private enableGPS: boolean = false;
 
-  constructor(@InjectRepository(Quectel) private quectelsRepo: Repository<Quectel>) {
+  constructor(
+    @InjectRepository(Quectel) private quectelsRepo: Repository<Quectel>,
+    @InjectRepository(GPSData) private gpsDataRepo: Repository<GPSData>
+  ) {
     this.allPortsInitializing()
+  }
+
+  async onModuleInit() {
+    const tableName = this.quectelsRepo.metadata.tableName
+
+    // Truncate table using raw SQL query
+    await this.quectelsRepo.query(`TRUNCATE TABLE ${tableName}`);
   }
 
   singlePortInitilizing(portNumber: number) {
@@ -305,28 +320,62 @@ export class ProbService {
     }
     else {
       const port = new SerialPort({ path: `/dev/ttyUSB${portNumber}`, baudRate: 115200 }); // baudRate: 9600
-      port.on('open', () => {
+      port.on('open', async () => {
         this.logger.warn(`ttyUSB${portNumber} port opened`);
         port.write(commands.getModuleInfo)
       })
 
       port.on('data', async (data) => {
         const response = data.toString()
-        const parsedResponse = parseData(response)
 
-        if (response.includes('$GPGGA')) {
-          // Extract GPS data from the GGA sentence
-          const ggaData = parseGGA(response);
-          if (ggaData['latitude'] !== null && !Number.isNaN(ggaData['latitude'])) {
-            this.logger.fatal(`GGA Latitude: ${ggaData.latitude} and port: ${portNumber}`);
+        if (this.enableGPS) {
+          if (!this.selectedGPSPort) {
+            if (response.includes('$GPGGA') || response.includes('$GPRMC')) {
+              // Extract GPS data from the GGA sentence
+              const ggaData = parseGGA(response);
+              const rmcData = parseRMC(response);
+
+              if ((ggaData['latitude'] !== null && ggaData['latitude'] !== 'NaN' && ggaData['latitude'] !== '') || (rmcData['latitude'] !== null && rmcData['latitude'] !== 'NaN' && rmcData['latitude'] !== '')) {
+                this.quectelsRepo.update({ serialPortNumber: serialPortInterfaces.find(item => item.includes(portNumber))[2] }, { isGPSActive: 'OK' })
+                this.quectelsRepo.update({ serialPortNumber: serialPortInterfaces.find(item => item.includes(portNumber))[3] }, { isGPSActive: 'OK' })
+                this.quectelsRepo.update({ serialPortNumber: serialPortInterfaces.find(item => item.includes(portNumber))[2] }, { gpsEnabling: 'enabled' })
+                this.quectelsRepo.update({ serialPortNumber: serialPortInterfaces.find(item => item.includes(portNumber))[3] }, { gpsEnabling: 'enabled' })
+                this.selectedGPSPort = portNumber;
+
+                const portsToDisableGPS = (serialPortInterfaces.filter(item => !item.includes(portNumber)).map(item => ([item[2], item[3]]))).flat(2)
+                for (const port of portsToDisableGPS) {
+                  this.serialPort[`ttyUSB${port}`].write(commands.disableGPS)
+                  this.quectelsRepo.update({ serialPortNumber: port }, { gpsEnabling: 'disabled', isGPSActive: 'deactive' })
+                }
+
+                this.selectedGPSIMEI = (await this.quectelsRepo.findOne({ where: { serialPortNumber: serialPortInterfaces.find(item => item.includes(portNumber))[2] }, select: { IMEI: true } })).IMEI
+              }
+            }
           }
-        } else if (response.includes('$GPRMC')) {
-          // Extract GPS data from the RMC sentence
-          const rmcData = parseRMC(response);
-          if (rmcData['latitude'] !== null && !Number.isNaN(rmcData['latitude'])) {
-            this.logger.fatal(`RMC Latitude: ${rmcData.latitude} and port: ${portNumber}`);
+          else {
+            if (portNumber === this.selectedGPSPort) {
+              const ggaData = parseGGA(response);
+              const rmcData = parseRMC(response);
+              const gpsTime = ggaData.time || rmcData.time
+              if (gpsTime && gpsTime !== '') {
+                const gpsData = this.gpsDataRepo.upsert({
+                  gpsTime: gpsTime,
+                  latitude: ggaData.latitude || rmcData.latitude,
+                  longitude: ggaData.longitude || rmcData.longitude,
+                  altitude: ggaData.altitude,
+                  groundSpeed: rmcData.groundSpeed,
+                },
+                  {
+                    conflictPaths: ['gpsTime'],
+                    skipUpdateIfNoValuesChanged: true
+                  }
+                )
+              }
+            }
           }
         }
+
+        const parsedResponse = parseData(response)
 
         if (parsedResponse && parsedResponse['moduleInformation']) {
           if (parsedResponse['moduleInformation']['cmeErrorCode']) {
@@ -453,8 +502,7 @@ export class ProbService {
             this.logger.debug(parsedResponse['simStatus']['status'])
           }
 
-          if (portNumber === 2 || portNumber === 3)
-            port.write(commands.enableGPS)
+          port.write(commands.enableGPS)
         }
 
         if (parsedResponse && parsedResponse['enableGPS']) {
@@ -483,42 +531,7 @@ export class ProbService {
           }
         }
 
-        // if (parsedResponse && parsedResponse['isGPSActive']) {
-        //   if (parsedResponse['isGPSActive']['cmeErrorCode']) {
-        //     const entry = await this.quectelsRepo.update(
-        //       { serialPortNumber: portNumber },
-        //       { isGPSActive: cmeErrCodeToDesc(parsedResponse['isGPSActive']['cmeErrorCode']) },
-        //     )
-        //     this.logger.verbose(cmeErrCodeToDesc(parsedResponse['isGPSActive']['cmeErrorCode']))
 
-        //     const allGPSActivationStatus = await this.quectelsRepo.find({ where: { isGPSActive: 'OK' } })
-        //     if (allGPSActivationStatus.length < 2) {
-        //       await new Promise(resolve => setTimeout(resolve, 1000));
-        //       port.write(commands.getCurrentLoc)
-        //     }
-        //   }
-        //   else if (parsedResponse['isGPSActive']['cmsErrorCode']) {
-        //     const entry = await this.quectelsRepo.update(
-        //       { serialPortNumber: portNumber },
-        //       { isGPSActive: cmsErrCodeToDesc(parsedResponse['isGPSActive']['cmsErrorCode']) },
-        //     )
-        //     this.logger.verbose(cmsErrCodeToDesc(parsedResponse['isGPSActive']['cmsErrorCode']))
-
-        //     const allGPSActivationStatus = await this.quectelsRepo.find({ where: { isGPSActive: 'OK' } })
-        //     if (allGPSActivationStatus.length < 2) {
-        //       port.write(commands.getCurrentLoc)
-        //     }
-        //   }
-        //   else {
-        //     const entry = await this.quectelsRepo.update(
-        //       { serialPortNumber: portNumber },
-        //       { isGPSActive: parsedResponse['isGPSActive']['status'] },
-        //     )
-        //     this.logger.debug(parsedResponse['isGPSActive']['status'])
-        //   }
-        // }
-
-        // this.logger.warn(`Received data in ttyUSB${portNumber}.  fd: ${port.port.fd}`, response);
 
       });
 
@@ -547,22 +560,36 @@ export class ProbService {
   }
 
   async getModulesStatus() {
-    let allEntries = await this.quectelsRepo.find()
-    const toReinitiatePorts = serialPortInterfaces.filter(ports => ports.filter(port => allEntries.map(item => item.serialPortNumber).includes(port)).length < 2).map(ports => ports.filter(port => !allEntries.map(item => item.serialPortNumber).includes(port)))
+    const allEntries = (
+      await this.quectelsRepo
+        .createQueryBuilder()
+        .select(['serialPortNumber', 'modelName', 'IMEI', 'IMSI', 'simStatus', 'isGPSActive'])
+        .groupBy('IMEI')
+        .orderBy('modelName', 'DESC')
+        .getRawMany()
+    )
+      .sort((a: Quectel, b: Quectel) => {
+        // 'EP06' should always come first
+        if (a.modelName === 'EP06' && b.modelName !== 'EP06') return -1;
+        if (a.modelName !== 'EP06' && b.modelName === 'EP06') return 1;
 
-    for (const ports of toReinitiatePorts) {
-      for (const port of ports) {
-        this.singlePortInitilizing(port)
-      }
-    }
+        // For other model names, follow the original sorting logic
+        if (a.modelName < b.modelName) return -1;
+        if (a.modelName > b.modelName) return 1;
 
-    allEntries = await this.quectelsRepo
-      .createQueryBuilder()
-      .select(['modelName', 'IMEI', 'IMSI', 'simStatus', 'activeScenario']).groupBy('IMEI')
-      .orderBy('serialPortNumber', 'ASC')
-      .getRawMany();
+        // Secondary sorting based on isGPS
+        if (a.isGPSActive && !b.isGPSActive) return -1;
+        if (!a.isGPSActive && b.isGPSActive) return 1;
 
-    return allEntries.map(item => item).sort((a, b) => a.serialPortNumber - b.serialPortNumber)
+        return 0; // Default: elements are considered equal
+      });
+
+    return allEntries
+  }
+
+  enablingGPS() {
+    this.enableGPS = true;
+    return true
   }
 
   async startLog(type: logLocationType, code: string, expert: string) {
@@ -575,33 +602,30 @@ export class ProbService {
       }
     }
 
-    allEntries = await this.quectelsRepo
-      .createQueryBuilder()
-      .select(['serialPortNumber', 'modelName', 'IMEI', 'IMSI', 'simStatus'])
-      .groupBy('IMEI')
-      .orderBy('modelName', 'DESC')
-      .getRawMany();
+    allEntries = await this.getModulesStatus()
 
     if (allEntries.filter(entry => entry.simStatus === 'READY').length === 8) {
-      let scenario = [scenarioName.GSMIdle, scenarioName.WCDMAIdle, scenarioName.LTEIdle, scenarioName.ALLTechIdle, scenarioName.GSMLongCall, scenarioName.WCDMALongCall, scenarioName.FTP_DL_TH, scenarioName.FTP_UP_TH]
+      let scenarios = [scenarioName.GSMIdle, scenarioName.WCDMAIdle, scenarioName.LTEIdle, scenarioName.ALLTechIdle, scenarioName.GSMLongCall, scenarioName.WCDMALongCall, scenarioName.FTP_DL_TH, scenarioName.FTP_UP_TH]
+
+
       const map = allEntries.reduce((p, c) => {
-        if (c.modelName === 'EP06' && scenario.includes(scenarioName.WCDMAIdle)) {
-          scenario = scenario.filter(item => item !== scenarioName.WCDMAIdle)
+        if (c.modelName === 'EP06' && scenarios.includes(scenarioName.WCDMAIdle)) {
+          scenarios = scenarios.filter(item => item !== scenarioName.WCDMAIdle)
           return {
             ...p,
             [c.IMEI]: scenarioName.WCDMAIdle
           }
         }
-        else if (c.modelName === 'EP06' && scenario.includes(scenarioName.WCDMALongCall)) {
-          scenario = scenario.filter(item => item !== scenarioName.WCDMALongCall)
+        else if (c.modelName === 'EP06' && scenarios.includes(scenarioName.WCDMALongCall)) {
+          scenarios = scenarios.filter(item => item !== scenarioName.WCDMALongCall)
           return {
             ...p,
             [c.IMEI]: scenarioName.WCDMALongCall
           }
         }
         else {
-          const select = scenario[0]
-          scenario = scenario.filter(item => item !== select)
+          const select = scenarios[0]
+          scenarios = scenarios.filter(item => item !== select)
           return {
             ...p,
             [c.IMEI]: select
@@ -612,7 +636,13 @@ export class ProbService {
       for (const imei of Object.keys(map)) {
         await this.quectelsRepo.update({ IMEI: imei }, { activeScenario: map[imei] })
       }
-      return await this.getModulesStatus()
+
+      allEntries = await this.getModulesStatus()
+
+      for (const module of allEntries) {
+
+      }
+
     }
 
     return allEntries
@@ -621,11 +651,7 @@ export class ProbService {
     // start scenario
   }
 
-  async findGPSModule() {
-
-  }
-
-
+  gsmLockIdle(port: SerialPort) { }
 
 
   create(createProbDto: CreateProbDto) {

@@ -1,5 +1,4 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
-import { logLocationType } from "../enum/logLocationType.enum";
 import { scenarioName } from "../enum/scenarioName.enum";
 
 @Entity()
