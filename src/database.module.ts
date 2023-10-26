@@ -3,6 +3,9 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
 import { TypeOrmModule, TypeOrmModuleOptions } from "@nestjs/typeorm";
 import { Quectel } from "./prob/entities/quectel.entity";
 import { GPSData } from "./prob/entities/gps-data.entity";
+import { User } from "./prob/entities/user.entity";
+import { Inspection } from "./prob/entities/inspection.entity";
+import { GSMIdle } from "./prob/entities/gsmIdle.entity";
 
 @Module({
     imports: [
@@ -17,8 +20,11 @@ import { GPSData } from "./prob/entities/gps-data.entity";
                     password: configService.get<string>('MYSQL_PASSWORD'),
                     database: configService.get<string>('MYSQL_DB_NAME'),
                     entities: [
+                        User,
                         Quectel,
-                        GPSData
+                        GPSData,
+                        Inspection,
+                        GSMIdle
                     ],
                     synchronize: true,
                     // synchronize: false,

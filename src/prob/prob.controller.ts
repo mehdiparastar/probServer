@@ -41,7 +41,7 @@ export class ProbController {
 
   @Post('start')
   start(@Body() body: StartLogDto) {
-    return this.probService.startLog(body.type, body.code, body.expert)
+    return this.probService.startLog(body.type, body.code, body.expertId)
   }
 
   @Post('pause')

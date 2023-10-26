@@ -9,6 +9,9 @@ import { Quectel } from './entities/quectel.entity';
 import { commands } from './enum/commands.enum';
 import { scenarioName } from './enum/scenarioName.enum';
 import { GPSData } from './entities/gps-data.entity';
+import { User } from './entities/user.entity';
+import { Inspection } from './entities/inspection.entity';
+import { GSMIdle } from './entities/gsmIdle.entity';
 
 const serialPortCount = 32
 
@@ -343,11 +346,15 @@ export class ProbService implements OnModuleInit {
   private logStarted: boolean = false;
   private type: logLocationType
   private code: string
-  private expert: string
+  private expert: User
+  private inspection: Inspection
 
   constructor(
+    @InjectRepository(User) private usersRepo: Repository<User>,
     @InjectRepository(Quectel) private quectelsRepo: Repository<Quectel>,
-    @InjectRepository(GPSData) private gpsDataRepo: Repository<GPSData>
+    @InjectRepository(GPSData) private gpsDataRepo: Repository<GPSData>,
+    @InjectRepository(Inspection) private inspectionsRepo: Repository<Inspection>,
+    @InjectRepository(GSMIdle) private gsmIdlesRepo: Repository<GSMIdle>,
   ) {
     this.allPortsInitializing()
   }
@@ -623,7 +630,38 @@ export class ProbService implements OnModuleInit {
             const thidScenario = (await this.quectelsRepo.findOne({ where: { serialPortNumber: portNumber }, select: { activeScenario: true } })).activeScenario
 
             if (thidScenario === scenarioName.GSMIdle) {
-              this.logger.debug(`rxlev: ${parsedResponse.getNetworkParameters.rxlev} or ${parsedResponse.getNetworkParameters.rxlevfull} or ${parsedResponse.getNetworkParameters.rxlevsub}`)
+              if (this.logStarted) {
+                const newEntry = this.gsmIdlesRepo.create({
+                  tech: parsedResponse.getNetworkParameters.tech,
+                  mcc: parsedResponse.getNetworkParameters.mcc,
+                  mnc: parsedResponse.getNetworkParameters.mnc,
+                  lac: parsedResponse.getNetworkParameters.lac,
+                  cellid: parsedResponse.getNetworkParameters.cellid,
+                  bsic: parsedResponse.getNetworkParameters.bsic,
+                  arfcn: parsedResponse.getNetworkParameters.arfcn,
+                  bandgsm: parsedResponse.getNetworkParameters.bandgsm,
+                  rxlev: parsedResponse.getNetworkParameters.rxlev,
+                  txp: parsedResponse.getNetworkParameters.txp,
+                  tla: parsedResponse.getNetworkParameters.tla,
+                  drx: parsedResponse.getNetworkParameters.drx,
+                  c1: parsedResponse.getNetworkParameters.c1,
+                  c2: parsedResponse.getNetworkParameters.c2,
+                  gprs: parsedResponse.getNetworkParameters.gprs,
+                  tch: parsedResponse.getNetworkParameters.tch,
+                  ts: parsedResponse.getNetworkParameters.ts,
+                  ta: parsedResponse.getNetworkParameters.ta,
+                  maio: parsedResponse.getNetworkParameters.maio,
+                  hsn: parsedResponse.getNetworkParameters.hsn,
+                  rxlevsub: parsedResponse.getNetworkParameters.rxlevsub,
+                  rxlevfull: parsedResponse.getNetworkParameters.rxlevfull,
+                  rxqualsub: parsedResponse.getNetworkParameters.rxqualsub,
+                  rxqualfull: parsedResponse.getNetworkParameters.rxqualfull,
+                  voicecodec: parsedResponse.getNetworkParameters.voicecodec,
+                  inspection: this.inspection,
+                })
+                const save = await this.gsmIdlesRepo.save(newEntry)
+              }
+              // this.logger.debug(`rxlev: ${parsedResponse.getNetworkParameters.rxlev} or ${parsedResponse.getNetworkParameters.rxlevfull} or ${parsedResponse.getNetworkParameters.rxlevsub}`)
               port.write(commands.getNetworkParameters)
             }
           }
@@ -716,78 +754,95 @@ export class ProbService implements OnModuleInit {
     }
   }
 
-  async startLog(type: logLocationType, code: string, expert: string) {
-    const count = await this.quectelsRepo.count({ where: { simStatus: 'READY' } })
+  async startLog(type: logLocationType, code: string, expertId: number) {
+    if (this.logStarted === false) {
+      const count = await this.quectelsRepo.count({ where: { simStatus: 'READY' } })
+      const expert = await this.usersRepo.findOne({ where: { id: expertId } })
 
-    if (count === 16) {
-      if (this.gpsEnabled) {
-        let allEntries = await this.getModulesStatus()
+      if (expert) {
+        if (count === 16) {
+          if (this.gpsEnabled) {
+            let allEntries = await this.getModulesStatus()
 
-        if (allEntries.filter(entry => entry.simStatus === 'READY').length === 8) {
-          let scenarios = [scenarioName.GSMIdle, scenarioName.WCDMAIdle, scenarioName.LTEIdle, scenarioName.ALLTechIdle, scenarioName.GSMLongCall, scenarioName.WCDMALongCall, scenarioName.FTP_DL_TH, scenarioName.FTP_UP_TH]
+            if (allEntries.filter(entry => entry.simStatus === 'READY').length === 8) {
+              let scenarios = [scenarioName.GSMIdle, scenarioName.WCDMAIdle, scenarioName.LTEIdle, scenarioName.ALLTechIdle, scenarioName.GSMLongCall, scenarioName.WCDMALongCall, scenarioName.FTP_DL_TH, scenarioName.FTP_UP_TH]
 
-          const map = allEntries.reduce((p, c) => {
-            if (c.modelName === 'EP06' && scenarios.includes(scenarioName.WCDMAIdle)) {
-              scenarios = scenarios.filter(item => item !== scenarioName.WCDMAIdle)
-              return {
-                ...p,
-                [c.IMEI]: scenarioName.WCDMAIdle
+              const map = allEntries.reduce((p, c) => {
+                if (c.modelName === 'EP06' && scenarios.includes(scenarioName.WCDMAIdle)) {
+                  scenarios = scenarios.filter(item => item !== scenarioName.WCDMAIdle)
+                  return {
+                    ...p,
+                    [c.IMEI]: scenarioName.WCDMAIdle
+                  }
+                }
+                else if (c.modelName === 'EP06' && scenarios.includes(scenarioName.WCDMALongCall)) {
+                  scenarios = scenarios.filter(item => item !== scenarioName.WCDMALongCall)
+                  return {
+                    ...p,
+                    [c.IMEI]: scenarioName.WCDMALongCall
+                  }
+                }
+                else {
+                  const select = scenarios[0]
+                  scenarios = scenarios.filter(item => item !== select)
+                  return {
+                    ...p,
+                    [c.IMEI]: select
+                  }
+                }
+              }, {})
+
+              for (const imei of Object.keys(map)) {
+                await this.quectelsRepo.update({ IMEI: imei }, { activeScenario: map[imei] })
+              }
+
+              allEntries = await this.getModulesStatus()
+
+              this.logStarted = true;
+              this.type = type
+              this.code = code
+              this.expert = expert
+
+              const newInspection = this.inspectionsRepo.create({
+                type: type,
+                code: code,
+                expert: expert
+              })
+              this.inspection = await this.inspectionsRepo.save(newInspection)
+
+              for (const module of allEntries) {
+                switch (module.activeScenario) {
+                  case scenarioName.GSMIdle:
+                    this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.lockGSM)
+                    break;
+
+                  default:
+                    break;
+                }
+
               }
             }
-            else if (c.modelName === 'EP06' && scenarios.includes(scenarioName.WCDMALongCall)) {
-              scenarios = scenarios.filter(item => item !== scenarioName.WCDMALongCall)
-              return {
-                ...p,
-                [c.IMEI]: scenarioName.WCDMALongCall
-              }
-            }
-            else {
-              const select = scenarios[0]
-              scenarios = scenarios.filter(item => item !== select)
-              return {
-                ...p,
-                [c.IMEI]: select
-              }
-            }
-          }, {})
+            return allEntries
 
-          for (const imei of Object.keys(map)) {
-            await this.quectelsRepo.update({ IMEI: imei }, { activeScenario: map[imei] })
+            // check module types
+
+            // start scenario
           }
-
-          allEntries = await this.getModulesStatus()
-
-          this.logStarted = true;
-          this.type = type
-          this.code = code
-          this.expert = expert
-
-          for (const module of allEntries) {
-            switch (module.activeScenario) {
-              case scenarioName.GSMIdle:
-                this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.lockGSM)
-                break;
-
-              default:
-                break;
-            }
-
+          else {
+            return { msg: 'please enable GPS first.' }
           }
         }
-        return allEntries
-
-        // check module types
-
-        // start scenario
+        else {
+          return { msg: `please initiate again  - ${count} modeuls are ready from 16.` }
+        }
       }
       else {
-        return { msg: 'please enable GPS first.' }
+        return { msg: `provided userId doesnt exist.` }
       }
     }
     else {
-      return { msg: `please initiate again  - ${count} modeuls are ready from 16.` }
+      return { msg: `please end current logging process.` }
     }
-
   }
 
   pauseLog() {

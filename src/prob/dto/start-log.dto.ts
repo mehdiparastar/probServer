@@ -13,5 +13,5 @@ export class StartLogDto {
 
     @IsString()
     @ApiProperty({})
-    expert: string;   
+    expertId: number;
 }

@@ -4,9 +4,12 @@ import { ProbController } from './prob.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Quectel } from './entities/quectel.entity';
 import { GPSData } from './entities/gps-data.entity';
+import { User } from './entities/user.entity';
+import { GSMIdle } from './entities/gsmIdle.entity';
+import { Inspection } from './entities/inspection.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Quectel, GPSData])],
+  imports: [TypeOrmModule.forFeature([User, Quectel, GPSData, GSMIdle, Inspection])],
   controllers: [ProbController],
   providers: [ProbService],
 })
