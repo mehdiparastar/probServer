@@ -20,7 +20,10 @@ const correctPattern = {
   'moduleIMEI': /AT\+CGSN\r\r\n(\d+)\r\n\r\nOK\r\n/,
   'simStatus': /AT\+CPIN\?\r\r\n\+CPIN: (\w+)\r\n\r\nOK\r\n/,
   'enableGPS': /AT\+QGPS=1\r\r\n(\w+)\r\n/,
-  'isGPSActive': /AT\+QGPSLOC=2\r\r\n\+QGPSLOC: ([\d.]+),([\d.]+),([\d.]+),([\d.]+),([\d.]+),(\d+),([\d.]+),([\d.]+),([\d.]+),(\d+),(\d+)\r\n\r\nOK\r\n/
+  'isGPSActive': /AT\+QGPSLOC=2\r\r\n\+QGPSLOC: ([\d.]+),([\d.]+),([\d.]+),([\d.]+),([\d.]+),(\d+),([\d.]+),([\d.]+),([\d.]+),(\d+),(\d+)\r\n\r\nOK\r\n/,
+  'lockGSM': /AT\+QCFG="nwscanmode",1\r\r\nOK\r\n/,
+  'getNetworkParameters': /AT\+QENG="servingcell";\r\r\n\+QENG: "servingcell","(\w+)","(\w+)",(\d+),(\d+),(\d+),(\w+),(\d+),(\d+),([-]|\w+),(-?\d+),(\d+),(\d+),(\d+),(\d+),(\d+),(\d+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),"([-]|\w+)"\r\n\r\nOK\r\n/,
+  // 'AT+QENG="servingcell";\r\r\n+QENG: "servingcell","LIMSRV","GSM",432,11,587,293A,31,98,-,-63,255,255,0,43,43,1,-,-,-,-,-,-,-,-,-,"-"\r\n\r\nOK\r\n'
 }
 
 const cmeErrorPattern = {
@@ -30,6 +33,8 @@ const cmeErrorPattern = {
   'simStatus': /AT\+CPIN\?\r\r\n\+CME ERROR: (\d+)\r\n/,
   'enableGPS': /AT\+QGPS=1\r\r\n\+CME ERROR: (\d+)\r\n/,
   'isGPSActive': /AT\+QGPSLOC=2\r\r\n\+CME ERROR: (\d+)\r\n/,
+  'lockGSM': /AT\+QCFG="nwscanmode",1\r\r\n\+CME ERROR: (\d+)\r\n/,
+  'getNetworkParameters': /AT\+QENG="servingcell";\r\r\n\+CME ERROR: (\d+)\r\n/,
 }
 
 const cmsErrorPattern = {
@@ -39,6 +44,8 @@ const cmsErrorPattern = {
   'simStatus': /AT\+CPIN\?\r\r\n\+CMS ERROR: (\d+)\r\n/,
   'enableGPS': /AT\+QGPS=1\r\r\n\+CMS ERROR: (\d+)\r\n/,
   'isGPSActive': /AT\+QGPSLOC=2\r\r\n\+CMS ERROR: (\d+)\r\n/,
+  'lockGSM': /AT\+QCFG="nwscanmode",1\r\r\n\+CMS ERROR: (\d+)\r\n/,
+  'getNetworkParameters': /AT\+QENG="servingcell";\r\r\n\+CMS ERROR: (\d+)\r\n/,
 }
 
 function convertDMStoDD(degrees: string, direction: string) {
@@ -46,7 +53,6 @@ function convertDMStoDD(degrees: string, direction: string) {
   const dd = Math.floor(d / 100) + (d % 100) / 60;
   return direction === 'S' || direction === 'W' ? `${-dd}` : `${dd}`;
 }
-
 
 // Function to parse GGA sentence
 function parseGGA(sentence: string) {
@@ -225,11 +231,16 @@ const cmsErrCodeToDesc = (code: string) => {
   }
 }
 
+const sleep = async (milisecond: number) => {
+  await new Promise(resolve => setTimeout(resolve, milisecond))
+}
+
 const parseData = (response: string) => {
   // if (response.substring(0, 8) === 'AT+CPIN?') {
   // if (response.match(/ATI\r\r\n\+CME ERROR: (\d+)\r\n/)) {
-  if (response.indexOf('QGPSLOC') >= 0 && response.indexOf('ERROR') < 0) {
-    // console.log(response)
+  // if (response.indexOf('nwscanmode') >= 0 && response.indexOf('ERROR') < 0) {
+  if (response.indexOf('servingcell') >= 0 && response.indexOf('ERROR') < 0) {
+    // console.error(response)
   }
 
   const correctKeys = Object.keys(correctPattern)
@@ -249,6 +260,37 @@ const parseData = (response: string) => {
       if (key === 'simStatus') return { [key]: { 'status': correctMatches[1].trim() } }
       if (key === 'enableGPS') return { [key]: { 'status': 'OK' } }
       if (key === 'isGPSActive') return { [key]: { 'status': 'OK' } }
+      if (key === 'lockGSM') return { [key]: { 'status': 'GSM_LOCK_OK' } }
+      if (key === 'getNetworkParameters')
+        return {
+          [key]: {
+            'tech': correctMatches[2].trim(),
+            'mcc': correctMatches[3].trim(),
+            'mnc': correctMatches[4].trim(),
+            'lac': correctMatches[5].trim(),
+            'cellid': correctMatches[6].trim(),
+            'bsic': correctMatches[7].trim(),
+            'arfcn': correctMatches[8].trim(),
+            'bandgsm': correctMatches[9].trim(),
+            'rxlev': correctMatches[10].trim(),
+            'txp': correctMatches[11].trim(),
+            'tla': correctMatches[12].trim(),
+            'drx': correctMatches[13].trim(),
+            'c1': correctMatches[14].trim(),
+            'c2': correctMatches[15].trim(),
+            'gprs': correctMatches[16].trim(),
+            'tch': correctMatches[17].trim(),
+            'ts': correctMatches[18].trim(),
+            'ta': correctMatches[19].trim(),
+            'maio': correctMatches[20].trim(),
+            'hsn': correctMatches[21].trim(),
+            'rxlevsub': correctMatches[22].trim(),
+            'rxlevfull': correctMatches[23].trim(),
+            'rxqualsub': correctMatches[24].trim(),
+            'rxqualfull': correctMatches[25].trim(),
+            'voicecodec': correctMatches[26].trim(),
+          }
+        }
     }
   }
 
@@ -263,6 +305,8 @@ const parseData = (response: string) => {
       if (key === 'simStatus') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
       if (key === 'enableGPS') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
       if (key === 'isGPSActive') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
+      if (key === 'lockGSM') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
+      if (key === 'getNetworkParameters') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
     }
   }
 
@@ -277,7 +321,14 @@ const parseData = (response: string) => {
       if (key === 'simStatus') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
       if (key === 'enableGPS') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
       if (key === 'isGPSActive') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+      if (key === 'lockGSM') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+      if (key === 'getNetworkParameters') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
     }
+  }
+
+  // if itration tasks dont captured up to now : temprorarly until all tech regex added
+  if (response.indexOf('servingcell') >= 0) {
+    return { ['getNetworkParameters']: { 'cmeErrorCode': 'temprorarly until all tech regex added' } }
   }
 
   return false
@@ -288,8 +339,11 @@ export class ProbService implements OnModuleInit {
   private readonly logger = new Logger(ProbService.name);
   private serialPort: { [key: string]: SerialPort } = {};
   private selectedGPSPort: number;
-  private selectedGPSIMEI: string;
-  private enableGPS: boolean = false;
+  private gpsEnabled: boolean = false;
+  private logStarted: boolean = false;
+  private type: logLocationType
+  private code: string
+  private expert: string
 
   constructor(
     @InjectRepository(Quectel) private quectelsRepo: Repository<Quectel>,
@@ -328,14 +382,15 @@ export class ProbService implements OnModuleInit {
       port.on('data', async (data) => {
         const response = data.toString()
 
-        if (this.enableGPS) {
+        if (this.gpsEnabled) {
           if (!this.selectedGPSPort) {
             if (response.includes('$GPGGA') || response.includes('$GPRMC')) {
               // Extract GPS data from the GGA sentence
               const ggaData = parseGGA(response);
               const rmcData = parseRMC(response);
 
-              if ((ggaData['latitude'] !== null && ggaData['latitude'] !== 'NaN' && ggaData['latitude'] !== '') || (rmcData['latitude'] !== null && rmcData['latitude'] !== 'NaN' && rmcData['latitude'] !== '')) {
+              if ((ggaData['latitude'] !== null && ggaData['latitude'] !== undefined && ggaData['latitude'] !== 'NaN' && ggaData['latitude'] !== '') || (rmcData['latitude'] !== null && rmcData['latitude'] !== undefined && rmcData['latitude'] !== 'NaN' && rmcData['latitude'] !== '')) {
+                this.logger.warn(`recieved GPS data: ${ggaData['latitude']}, ${ggaData['latitude']} or ${rmcData['latitude']}, ${rmcData['latitude']}`)
                 this.quectelsRepo.update({ serialPortNumber: serialPortInterfaces.find(item => item.includes(portNumber))[2] }, { isGPSActive: 'OK' })
                 this.quectelsRepo.update({ serialPortNumber: serialPortInterfaces.find(item => item.includes(portNumber))[3] }, { isGPSActive: 'OK' })
                 this.quectelsRepo.update({ serialPortNumber: serialPortInterfaces.find(item => item.includes(portNumber))[2] }, { gpsEnabling: 'enabled' })
@@ -347,8 +402,6 @@ export class ProbService implements OnModuleInit {
                   this.serialPort[`ttyUSB${port}`].write(commands.disableGPS)
                   this.quectelsRepo.update({ serialPortNumber: port }, { gpsEnabling: 'disabled', isGPSActive: 'deactive' })
                 }
-
-                this.selectedGPSIMEI = (await this.quectelsRepo.findOne({ where: { serialPortNumber: serialPortInterfaces.find(item => item.includes(portNumber))[2] }, select: { IMEI: true } })).IMEI
               }
             }
           }
@@ -357,7 +410,7 @@ export class ProbService implements OnModuleInit {
               const ggaData = parseGGA(response);
               const rmcData = parseRMC(response);
               const gpsTime = ggaData.time || rmcData.time
-              if (gpsTime && gpsTime !== '') {
+              if (gpsTime && gpsTime !== '' && this.logStarted) {
                 const gpsData = this.gpsDataRepo.upsert({
                   gpsTime: gpsTime,
                   latitude: ggaData.latitude || rmcData.latitude,
@@ -526,12 +579,55 @@ export class ProbService implements OnModuleInit {
               { gpsEnabling: parsedResponse['enableGPS']['status'] },
             )
             this.logger.debug(parsedResponse['enableGPS']['status'])
-
-            // port.write(commands.getCurrentLoc)
           }
         }
 
+        /////////////////////////////////////////////////////////
 
+        if (parsedResponse && parsedResponse['lockGSM']) {
+          if (parsedResponse['lockGSM']['cmeErrorCode']) {
+            const entry = await this.quectelsRepo.update(
+              { serialPortNumber: portNumber },
+              { lockStatus: `GSM lock error: ${cmeErrCodeToDesc(parsedResponse['lockGSM']['cmeErrorCode'])}` },
+            )
+            port.write(commands.lockGSM)
+          }
+          else if (parsedResponse['lockGSM']['cmsErrorCode']) {
+            const entry = await this.quectelsRepo.update(
+              { serialPortNumber: portNumber },
+              { lockStatus: `GSM lock error: ${cmsErrCodeToDesc(parsedResponse['lockGSM']['cmsErrorCode'])}` },
+            )
+            port.write(commands.lockGSM)
+          }
+          else {
+            const entry = await this.quectelsRepo.update(
+              { serialPortNumber: portNumber },
+              { lockStatus: parsedResponse['lockGSM']['status'] },
+            )
+
+            const thidScenario = (await this.quectelsRepo.findOne({ where: { serialPortNumber: portNumber }, select: { activeScenario: true } })).activeScenario
+            if (thidScenario === scenarioName.GSMIdle) {
+              port.write(commands.getNetworkParameters)
+            }
+          }
+        }
+
+        if (parsedResponse && parsedResponse['getNetworkParameters']) {
+          if (parsedResponse['getNetworkParameters']['cmeErrorCode']) {
+            port.write(commands.getNetworkParameters)
+          }
+          else if (parsedResponse['getNetworkParameters']['cmsErrorCode']) {
+            port.write(commands.getNetworkParameters)
+          }
+          else {
+            const thidScenario = (await this.quectelsRepo.findOne({ where: { serialPortNumber: portNumber }, select: { activeScenario: true } })).activeScenario
+
+            if (thidScenario === scenarioName.GSMIdle) {
+              this.logger.debug(`rxlev: ${parsedResponse.getNetworkParameters.rxlev} or ${parsedResponse.getNetworkParameters.rxlevfull} or ${parsedResponse.getNetworkParameters.rxlevsub}`)
+              port.write(commands.getNetworkParameters)
+            }
+          }
+        }
 
       });
 
@@ -540,15 +636,27 @@ export class ProbService implements OnModuleInit {
       });
 
       this.serialPort[`ttyUSB${portNumber}`] = port
+
     }
   }
 
-  allPortsInitializing() {
-    for (let i = 0; i < serialPortCount; i++) {
-      if (!this.serialPort[`ttyUSB${i}`]) {
-        this.singlePortInitilizing(i)
+  async allPortsInitializing() {
+    let allEntries = await this.getModulesStatus()
+    const toReinitiatePorts =
+      serialPortInterfaces
+        .filter(ports => ports.filter(port => allEntries.map(item => item.serialPortNumber).includes(port)).length < 2)
+        .map(ports => ports.filter(port => !allEntries.map(item => item.serialPortNumber).includes(port)))
+        .flat(5)
+
+    this.logger.verbose(`to initiate ports: ${toReinitiatePorts.toString()}`)
+    if (toReinitiatePorts.length > 0) {
+      for (const port of toReinitiatePorts) {
+        this.singlePortInitilizing(port)
       }
     }
+
+    await new Promise(resolve => setTimeout(resolve, 10000))
+    return await this.getModulesStatus()
   }
 
   async findAllModules() {
@@ -560,10 +668,10 @@ export class ProbService implements OnModuleInit {
   }
 
   async getModulesStatus() {
-    const allEntries = (
+    const allEntries: Quectel[] = (
       await this.quectelsRepo
         .createQueryBuilder()
-        .select(['serialPortNumber', 'modelName', 'IMEI', 'IMSI', 'simStatus', 'isGPSActive'])
+        .select(['serialPortNumber', 'modelName', 'IMEI', 'IMSI', 'simStatus', 'isGPSActive', 'activeScenario'])
         .groupBy('IMEI')
         .orderBy('modelName', 'DESC')
         .getRawMany()
@@ -587,71 +695,112 @@ export class ProbService implements OnModuleInit {
     return allEntries
   }
 
-  enablingGPS() {
-    this.enableGPS = true;
-    return true
+  async enablingGPS() {
+    const inDbPortsCount = await this.quectelsRepo.count()
+    if (inDbPortsCount === 16) {
+      this.gpsEnabled = true;
+
+      const now = new Date().getTime()
+      while (new Date().getTime() < now + 300000) {
+        const modulesStatus = await this.getModulesStatus();
+
+        if (modulesStatus.some(item => item.isGPSActive === 'OK')) {
+          return true
+        }
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
+      return { data: `there are problem in GPS detecting. please check your conectivities.` }
+    }
+    else {
+      return { data: `please initiate first. current count is: ${inDbPortsCount}` }
+    }
   }
 
   async startLog(type: logLocationType, code: string, expert: string) {
-    let allEntries = await this.quectelsRepo.find()
-    const toReinitiatePorts = serialPortInterfaces.filter(ports => ports.filter(port => allEntries.map(item => item.serialPortNumber).includes(port)).length < 2).map(ports => ports.filter(port => !allEntries.map(item => item.serialPortNumber).includes(port)))
+    const count = await this.quectelsRepo.count({ where: { simStatus: 'READY' } })
 
-    for (const ports of toReinitiatePorts) {
-      for (const port of ports) {
-        this.singlePortInitilizing(port)
+    if (count === 16) {
+      if (this.gpsEnabled) {
+        let allEntries = await this.getModulesStatus()
+
+        if (allEntries.filter(entry => entry.simStatus === 'READY').length === 8) {
+          let scenarios = [scenarioName.GSMIdle, scenarioName.WCDMAIdle, scenarioName.LTEIdle, scenarioName.ALLTechIdle, scenarioName.GSMLongCall, scenarioName.WCDMALongCall, scenarioName.FTP_DL_TH, scenarioName.FTP_UP_TH]
+
+          const map = allEntries.reduce((p, c) => {
+            if (c.modelName === 'EP06' && scenarios.includes(scenarioName.WCDMAIdle)) {
+              scenarios = scenarios.filter(item => item !== scenarioName.WCDMAIdle)
+              return {
+                ...p,
+                [c.IMEI]: scenarioName.WCDMAIdle
+              }
+            }
+            else if (c.modelName === 'EP06' && scenarios.includes(scenarioName.WCDMALongCall)) {
+              scenarios = scenarios.filter(item => item !== scenarioName.WCDMALongCall)
+              return {
+                ...p,
+                [c.IMEI]: scenarioName.WCDMALongCall
+              }
+            }
+            else {
+              const select = scenarios[0]
+              scenarios = scenarios.filter(item => item !== select)
+              return {
+                ...p,
+                [c.IMEI]: select
+              }
+            }
+          }, {})
+
+          for (const imei of Object.keys(map)) {
+            await this.quectelsRepo.update({ IMEI: imei }, { activeScenario: map[imei] })
+          }
+
+          allEntries = await this.getModulesStatus()
+
+          this.logStarted = true;
+          this.type = type
+          this.code = code
+          this.expert = expert
+
+          for (const module of allEntries) {
+            switch (module.activeScenario) {
+              case scenarioName.GSMIdle:
+                this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.lockGSM)
+                break;
+
+              default:
+                break;
+            }
+
+          }
+        }
+        return allEntries
+
+        // check module types
+
+        // start scenario
+      }
+      else {
+        return { msg: 'please enable GPS first.' }
       }
     }
-
-    allEntries = await this.getModulesStatus()
-
-    if (allEntries.filter(entry => entry.simStatus === 'READY').length === 8) {
-      let scenarios = [scenarioName.GSMIdle, scenarioName.WCDMAIdle, scenarioName.LTEIdle, scenarioName.ALLTechIdle, scenarioName.GSMLongCall, scenarioName.WCDMALongCall, scenarioName.FTP_DL_TH, scenarioName.FTP_UP_TH]
-
-
-      const map = allEntries.reduce((p, c) => {
-        if (c.modelName === 'EP06' && scenarios.includes(scenarioName.WCDMAIdle)) {
-          scenarios = scenarios.filter(item => item !== scenarioName.WCDMAIdle)
-          return {
-            ...p,
-            [c.IMEI]: scenarioName.WCDMAIdle
-          }
-        }
-        else if (c.modelName === 'EP06' && scenarios.includes(scenarioName.WCDMALongCall)) {
-          scenarios = scenarios.filter(item => item !== scenarioName.WCDMALongCall)
-          return {
-            ...p,
-            [c.IMEI]: scenarioName.WCDMALongCall
-          }
-        }
-        else {
-          const select = scenarios[0]
-          scenarios = scenarios.filter(item => item !== select)
-          return {
-            ...p,
-            [c.IMEI]: select
-          }
-        }
-      }, {})
-
-      for (const imei of Object.keys(map)) {
-        await this.quectelsRepo.update({ IMEI: imei }, { activeScenario: map[imei] })
-      }
-
-      allEntries = await this.getModulesStatus()
-
-      for (const module of allEntries) {
-
-      }
-
+    else {
+      return { msg: `please initiate again  - ${count} modeuls are ready from 16.` }
     }
 
-    return allEntries
-    // check module types
-
-    // start scenario
   }
 
-  gsmLockIdle(port: SerialPort) { }
+  pauseLog() {
+    if (this.logStarted === true) {
+      this.logStarted = false
+      return true
+    }
+    return { data: 'log dont started yet.' }
+  }
+
+  async gsmLockIdle(port: SerialPort) {
+    port.write(commands.lockGSM)
+  }
 
 
   create(createProbDto: CreateProbDto) {

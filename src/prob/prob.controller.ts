@@ -34,14 +34,19 @@ export class ProbController {
     return this.probService.getModulesStatus()
   }
 
+  @Get('enableGPS')
+  async enablingGPS() {
+    return await this.probService.enablingGPS()
+  }
+
   @Post('start')
   start(@Body() body: StartLogDto) {
     return this.probService.startLog(body.type, body.code, body.expert)
   }
 
-  @Get('enableGPS')
-  enablingGPS() {
-    return this.probService.enablingGPS()
+  @Post('pause')
+  pause() {
+    return this.probService.pauseLog()
   }
 
   @Get(':id')

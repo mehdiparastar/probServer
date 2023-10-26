@@ -36,6 +36,9 @@ export class Quectel {
     @Column({ nullable: true })
     isGPSActive?: string
 
+    @Column({ nullable: true, default: 'allTech' })
+    lockStatus?: string
+
     @CreateDateColumn()
     createdAt?: Date;
 
