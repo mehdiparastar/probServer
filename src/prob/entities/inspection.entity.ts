@@ -2,6 +2,8 @@ import { Column, CreateDateColumn, Entity, Index, ManyToOne, OneToMany, PrimaryG
 import { logLocationType } from "../enum/logLocationType.enum";
 import { User } from "./user.entity";
 import { GSMIdle } from "./gsmIdle.entity";
+import { WCDMAIdle } from "./wcdmaIdle.entity";
+import { LTEIdle } from "./lteIdle.entity";
 
 @Entity()
 export class Inspection {
@@ -19,6 +21,12 @@ export class Inspection {
 
     @OneToMany(() => GSMIdle, (gsmIdle) => gsmIdle.inspection, { cascade: true })
     gsmIdles: GSMIdle[];
+
+    @OneToMany(() => WCDMAIdle, (wcdmaIdle) => wcdmaIdle.inspection, { cascade: true })
+    wcdmaIdles: WCDMAIdle[];
+
+    @OneToMany(() => LTEIdle, (lteIdle) => lteIdle.inspection, { cascade: true })
+    lteIdles: LTEIdle[];
 
     @CreateDateColumn()
     createdAt?: Date;

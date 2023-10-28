@@ -13,5 +13,7 @@ export enum commands {
     callMCI = 'ATD04151003609\r\n',
     callMTN = 'ATD04151003609\r\n',
     callRTL = 'ATD04151003609\r\n',
-    getNetworkParameters = 'AT+QENG="servingcell";\r\n'
+    getGSMNetworkParameters = 'AT+QENG="servingcell";\r\n',
+    getWCDMANetworkParameters = 'AT+QENG="servingcell";\r\n',
+    getLTENetworkParameters = 'AT+QENG="servingcell";\r\n',
 }

@@ -12,8 +12,12 @@ import { GPSData } from './entities/gps-data.entity';
 import { User } from './entities/user.entity';
 import { Inspection } from './entities/inspection.entity';
 import { GSMIdle } from './entities/gsmIdle.entity';
+import { WCDMAIdle } from './entities/wcdmaIdle.entity';
+import { LTEIdle } from './entities/lteIdle.entity';
 
 const serialPortCount = 32
+
+const WAIT_TO_NEXT_COMMAND_IN_MILISECOND = 400
 
 const serialPortInterfaces = [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15], [16, 17, 18, 19], [20, 21, 22, 23], [24, 25, 26, 27], [28, 29, 30, 31]]
 
@@ -25,8 +29,15 @@ const correctPattern = {
   'enableGPS': /AT\+QGPS=1\r\r\n(\w+)\r\n/,
   'isGPSActive': /AT\+QGPSLOC=2\r\r\n\+QGPSLOC: ([\d.]+),([\d.]+),([\d.]+),([\d.]+),([\d.]+),(\d+),([\d.]+),([\d.]+),([\d.]+),(\d+),(\d+)\r\n\r\nOK\r\n/,
   'lockGSM': /AT\+QCFG="nwscanmode",1\r\r\nOK\r\n/,
-  'getNetworkParameters': /AT\+QENG="servingcell";\r\r\n\+QENG: "servingcell","(\w+)","(\w+)",(\d+),(\d+),(\d+),(\w+),(\d+),(\d+),([-]|\w+),(-?\d+),(\d+),(\d+),(\d+),(\d+),(\d+),(\d+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),"([-]|\w+)"\r\n\r\nOK\r\n/,
+  'lockWCDMA': /AT\+QCFG="nwscanmode",2\r\r\nOK\r\n/,
+  'lockLTE': /AT\+QCFG="nwscanmode",3\r\r\nOK\r\n/,
+  'getGSMNetworkParameters': /AT\+QENG="servingcell";\r\r\n\+QENG: "servingcell","(\w+)","(\w+)",(\d+),(\d+),(\d+),(\w+),(\d+),(\d+),([-]|\w+),(-?\d+),(\d+),(\d+),(\d+),(\d+),(\d+),(\d+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),"([-]|\w+)"\r\n\r\nOK\r\n/,
   // 'AT+QENG="servingcell";\r\r\n+QENG: "servingcell","LIMSRV","GSM",432,11,587,293A,31,98,-,-63,255,255,0,43,43,1,-,-,-,-,-,-,-,-,-,"-"\r\n\r\nOK\r\n'
+  'getWCDMANetworkParameters': /AT\+QENG="servingcell";\r\r\n\+QENG: "servingcell","(-?\w+)","(-?\w+)",(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+)/,
+  //'AT+QENG="servingcell";\r\r\n+QENG: "servingcell","LIMSRV","WCDMA",432,35,584E,12DBAE3,10662,452,1,-70,-4,-,-,-,-,-\r\n\r\nOK\r\n'
+  'getLTENetworkParameters': /AT\+QENG="servingcell";\r\r\n\+QENG: "servingcell","(-?\w+)","(-?\w+)","(-?\w+)",(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+)/,
+  // AT+QENG="servingcell";\r\r\n+QENG: "servingcell","NOCONN","LTE","FDD",432,11,6442235,354,3102,7,5,5,866B,-97,-13,-64,3,22\r\n\r\nOK\r\n
+  // AT+QENG="servingcell";\r\r\n+QENG: "servingcell","NOCONN","LTE","FDD",432,35,1E77017,456,2850,7,5,5,584E,-100,-17,-62,-1,23\r\n\r\nOK\r\n
 }
 
 const cmeErrorPattern = {
@@ -37,7 +48,11 @@ const cmeErrorPattern = {
   'enableGPS': /AT\+QGPS=1\r\r\n\+CME ERROR: (\d+)\r\n/,
   'isGPSActive': /AT\+QGPSLOC=2\r\r\n\+CME ERROR: (\d+)\r\n/,
   'lockGSM': /AT\+QCFG="nwscanmode",1\r\r\n\+CME ERROR: (\d+)\r\n/,
-  'getNetworkParameters': /AT\+QENG="servingcell";\r\r\n\+CME ERROR: (\d+)\r\n/,
+  'lockWCDMA': /AT\+QCFG="nwscanmode",2\r\r\n\+CME ERROR: (\d+)\r\n/,
+  'lockLTE': /AT\+QCFG="nwscanmode",3\r\r\n\+CME ERROR: (\d+)\r\n/,
+  'getGSMNetworkParameters': /AT\+QENG="servingcell";\r\r\n\+CME ERROR: (\d+)\r\n/,
+  'getWCDMANetworkParameters': /AT\+QENG="servingcell";\r\r\n\+CME ERROR: (\d+)\r\n/,
+  'getLTENetworkParameters': /AT\+QENG="servingcell";\r\r\n\+CME ERROR: (\d+)\r\n/,
 }
 
 const cmsErrorPattern = {
@@ -48,7 +63,11 @@ const cmsErrorPattern = {
   'enableGPS': /AT\+QGPS=1\r\r\n\+CMS ERROR: (\d+)\r\n/,
   'isGPSActive': /AT\+QGPSLOC=2\r\r\n\+CMS ERROR: (\d+)\r\n/,
   'lockGSM': /AT\+QCFG="nwscanmode",1\r\r\n\+CMS ERROR: (\d+)\r\n/,
-  'getNetworkParameters': /AT\+QENG="servingcell";\r\r\n\+CMS ERROR: (\d+)\r\n/,
+  'lockWCDMA': /AT\+QCFG="nwscanmode",2\r\r\n\+CMS ERROR: (\d+)\r\n/,
+  'lockLTE': /AT\+QCFG="nwscanmode",3\r\r\n\+CMS ERROR: (\d+)\r\n/,
+  'getGSMNetworkParameters': /AT\+QENG="servingcell";\r\r\n\+CMS ERROR: (\d+)\r\n/,
+  'getWCDMANetworkParameters': /AT\+QENG="servingcell";\r\r\n\+CMS ERROR: (\d+)\r\n/,
+  'getLTENetworkParameters': /AT\+QENG="servingcell";\r\r\n\+CMS ERROR: (\d+)\r\n/,
 }
 
 function convertDMStoDD(degrees: string, direction: string) {
@@ -242,7 +261,11 @@ const parseData = (response: string) => {
   // if (response.substring(0, 8) === 'AT+CPIN?') {
   // if (response.match(/ATI\r\r\n\+CME ERROR: (\d+)\r\n/)) {
   // if (response.indexOf('nwscanmode') >= 0 && response.indexOf('ERROR') < 0) {
-  if (response.indexOf('servingcell') >= 0 && response.indexOf('ERROR') < 0) {
+  if (response.indexOf('nwscanmode') >= 0) {
+    // console.error(response)
+  }
+  if (response.indexOf('servingcell') >= 0 /*&& response.indexOf('wcdma') > 0*/) {
+    const stop = true
     // console.error(response)
   }
 
@@ -264,7 +287,7 @@ const parseData = (response: string) => {
       if (key === 'enableGPS') return { [key]: { 'status': 'OK' } }
       if (key === 'isGPSActive') return { [key]: { 'status': 'OK' } }
       if (key === 'lockGSM') return { [key]: { 'status': 'GSM_LOCK_OK' } }
-      if (key === 'getNetworkParameters')
+      if (key === 'getGSMNetworkParameters')
         return {
           [key]: {
             'tech': correctMatches[2].trim(),
@@ -294,6 +317,48 @@ const parseData = (response: string) => {
             'voicecodec': correctMatches[26].trim(),
           }
         }
+      if (key === 'lockWCDMA') return { [key]: { 'status': 'WCDMA_LOCK_OK' } }
+      if (key === 'getWCDMANetworkParameters')
+        return {
+          [key]: {
+            'tech': correctMatches[2].trim(),
+            'mcc': correctMatches[3].trim(),
+            'mnc': correctMatches[4].trim(),
+            'lac': correctMatches[5].trim(),
+            'cellid': correctMatches[6].trim(),
+            'uarfcn': correctMatches[7].trim(),
+            'psc': correctMatches[8].trim(),
+            'rac': correctMatches[9].trim(),
+            'rscp': correctMatches[10].trim(),
+            'ecio': correctMatches[11].trim(),
+            'phych': correctMatches[12].trim(),
+            'sf': correctMatches[13].trim(),
+            'slot': correctMatches[14].trim(),
+            'speech_code': correctMatches[15].trim(),
+            'comMod': correctMatches[16].trim(),
+          }
+        }
+      if (key === 'lockLTE') return { [key]: { 'status': 'LTE_LOCK_OK' } }
+      if (key === 'getLTENetworkParameters')
+        return {//"is_tdd","mmc","mnc","cellid","pcid","earfcn","freq_band_ind","ul_bandwidth","dl_bandwidth","tac","rsrp","rsrq","rssi","sinr","srxlev"
+          [key]: {
+            'is_tdd': correctMatches[2].trim(),
+            'mmc': correctMatches[3].trim(),
+            'mnc': correctMatches[4].trim(),
+            'cellid': correctMatches[5].trim(),
+            'pcid': correctMatches[6].trim(),
+            'earfcn': correctMatches[7].trim(),
+            'freq_band_ind': correctMatches[8].trim(),
+            'ul_bandwidth': correctMatches[9].trim(),
+            'dl_bandwidth': correctMatches[10].trim(),
+            'tac': correctMatches[11].trim(),
+            'rsrp': correctMatches[12].trim(),
+            'rsrq': correctMatches[13].trim(),
+            'rssi': correctMatches[14].trim(),
+            'sinr': correctMatches[15].trim(),
+            'srxlev': correctMatches[16].trim(),
+          }
+        }
     }
   }
 
@@ -309,7 +374,11 @@ const parseData = (response: string) => {
       if (key === 'enableGPS') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
       if (key === 'isGPSActive') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
       if (key === 'lockGSM') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
-      if (key === 'getNetworkParameters') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
+      if (key === 'getGSMNetworkParameters') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
+      if (key === 'lockWCDMA') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
+      if (key === 'getWCDMANetworkParameters') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
+      if (key === 'lockLTE') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
+      if (key === 'getLTENetworkParameters') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
     }
   }
 
@@ -325,13 +394,21 @@ const parseData = (response: string) => {
       if (key === 'enableGPS') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
       if (key === 'isGPSActive') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
       if (key === 'lockGSM') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
-      if (key === 'getNetworkParameters') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+      if (key === 'getGSMNetworkParameters') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+      if (key === 'lockWCDMA') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+      if (key === 'getWCDMANetworkParameters') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+      if (key === 'lockLTE') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+      if (key === 'getLTENetworkParameters') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
     }
   }
 
   // if itration tasks dont captured up to now : temprorarly until all tech regex added
-  if (response.indexOf('servingcell') >= 0) {
-    return { ['getNetworkParameters']: { 'cmeErrorCode': 'temprorarly until all tech regex added' } }
+  if (response.indexOf('servingcell') >= 0 && response.indexOf('GPGSA') < 0) {
+    return {
+      ['getGSMNetworkParameters']: { 'cmeErrorCode': 'temprorarly until all tech regex added' },
+      ['getWCDMANetworkParameters']: { 'cmeErrorCode': 'temprorarly until all tech regex added' },
+      ['getLTENetworkParameters']: { 'cmeErrorCode': 'temprorarly until all tech regex added' },
+    }
   }
 
   return false
@@ -355,7 +432,10 @@ export class ProbService implements OnModuleInit {
     @InjectRepository(GPSData) private gpsDataRepo: Repository<GPSData>,
     @InjectRepository(Inspection) private inspectionsRepo: Repository<Inspection>,
     @InjectRepository(GSMIdle) private gsmIdlesRepo: Repository<GSMIdle>,
+    @InjectRepository(WCDMAIdle) private wcdmaIdlesRepo: Repository<WCDMAIdle>,
+    @InjectRepository(LTEIdle) private lteIdlesRepo: Repository<LTEIdle>,
   ) {
+
     this.allPortsInitializing()
   }
 
@@ -589,7 +669,7 @@ export class ProbService implements OnModuleInit {
           }
         }
 
-        /////////////////////////////////////////////////////////
+        ////////////////// GSM ///////////////////////////
 
         if (parsedResponse && parsedResponse['lockGSM']) {
           if (parsedResponse['lockGSM']['cmeErrorCode']) {
@@ -614,17 +694,17 @@ export class ProbService implements OnModuleInit {
 
             const thidScenario = (await this.quectelsRepo.findOne({ where: { serialPortNumber: portNumber }, select: { activeScenario: true } })).activeScenario
             if (thidScenario === scenarioName.GSMIdle) {
-              port.write(commands.getNetworkParameters)
+              port.write(commands.getGSMNetworkParameters)
             }
           }
         }
 
-        if (parsedResponse && parsedResponse['getNetworkParameters']) {
-          if (parsedResponse['getNetworkParameters']['cmeErrorCode']) {
-            port.write(commands.getNetworkParameters)
+        if (parsedResponse && parsedResponse['getGSMNetworkParameters']) {
+          if (parsedResponse['getGSMNetworkParameters']['cmeErrorCode']) {
+            port.write(commands.getGSMNetworkParameters)
           }
-          else if (parsedResponse['getNetworkParameters']['cmsErrorCode']) {
-            port.write(commands.getNetworkParameters)
+          else if (parsedResponse['getGSMNetworkParameters']['cmsErrorCode']) {
+            port.write(commands.getGSMNetworkParameters)
           }
           else {
             const thidScenario = (await this.quectelsRepo.findOne({ where: { serialPortNumber: portNumber }, select: { activeScenario: true } })).activeScenario
@@ -632,37 +712,176 @@ export class ProbService implements OnModuleInit {
             if (thidScenario === scenarioName.GSMIdle) {
               if (this.logStarted) {
                 const newEntry = this.gsmIdlesRepo.create({
-                  tech: parsedResponse.getNetworkParameters.tech,
-                  mcc: parsedResponse.getNetworkParameters.mcc,
-                  mnc: parsedResponse.getNetworkParameters.mnc,
-                  lac: parsedResponse.getNetworkParameters.lac,
-                  cellid: parsedResponse.getNetworkParameters.cellid,
-                  bsic: parsedResponse.getNetworkParameters.bsic,
-                  arfcn: parsedResponse.getNetworkParameters.arfcn,
-                  bandgsm: parsedResponse.getNetworkParameters.bandgsm,
-                  rxlev: parsedResponse.getNetworkParameters.rxlev,
-                  txp: parsedResponse.getNetworkParameters.txp,
-                  tla: parsedResponse.getNetworkParameters.tla,
-                  drx: parsedResponse.getNetworkParameters.drx,
-                  c1: parsedResponse.getNetworkParameters.c1,
-                  c2: parsedResponse.getNetworkParameters.c2,
-                  gprs: parsedResponse.getNetworkParameters.gprs,
-                  tch: parsedResponse.getNetworkParameters.tch,
-                  ts: parsedResponse.getNetworkParameters.ts,
-                  ta: parsedResponse.getNetworkParameters.ta,
-                  maio: parsedResponse.getNetworkParameters.maio,
-                  hsn: parsedResponse.getNetworkParameters.hsn,
-                  rxlevsub: parsedResponse.getNetworkParameters.rxlevsub,
-                  rxlevfull: parsedResponse.getNetworkParameters.rxlevfull,
-                  rxqualsub: parsedResponse.getNetworkParameters.rxqualsub,
-                  rxqualfull: parsedResponse.getNetworkParameters.rxqualfull,
-                  voicecodec: parsedResponse.getNetworkParameters.voicecodec,
+                  tech: parsedResponse.getGSMNetworkParameters.tech,
+                  mcc: parsedResponse.getGSMNetworkParameters.mcc,
+                  mnc: parsedResponse.getGSMNetworkParameters.mnc,
+                  lac: parsedResponse.getGSMNetworkParameters.lac,
+                  cellid: parsedResponse.getGSMNetworkParameters.cellid,
+                  bsic: parsedResponse.getGSMNetworkParameters.bsic,
+                  arfcn: parsedResponse.getGSMNetworkParameters.arfcn,
+                  bandgsm: parsedResponse.getGSMNetworkParameters.bandgsm,
+                  rxlev: parsedResponse.getGSMNetworkParameters.rxlev,
+                  txp: parsedResponse.getGSMNetworkParameters.txp,
+                  tla: parsedResponse.getGSMNetworkParameters.tla,
+                  drx: parsedResponse.getGSMNetworkParameters.drx,
+                  c1: parsedResponse.getGSMNetworkParameters.c1,
+                  c2: parsedResponse.getGSMNetworkParameters.c2,
+                  gprs: parsedResponse.getGSMNetworkParameters.gprs,
+                  tch: parsedResponse.getGSMNetworkParameters.tch,
+                  ts: parsedResponse.getGSMNetworkParameters.ts,
+                  ta: parsedResponse.getGSMNetworkParameters.ta,
+                  maio: parsedResponse.getGSMNetworkParameters.maio,
+                  hsn: parsedResponse.getGSMNetworkParameters.hsn,
+                  rxlevsub: parsedResponse.getGSMNetworkParameters.rxlevsub,
+                  rxlevfull: parsedResponse.getGSMNetworkParameters.rxlevfull,
+                  rxqualsub: parsedResponse.getGSMNetworkParameters.rxqualsub,
+                  rxqualfull: parsedResponse.getGSMNetworkParameters.rxqualfull,
+                  voicecodec: parsedResponse.getGSMNetworkParameters.voicecodec,
                   inspection: this.inspection,
                 })
                 const save = await this.gsmIdlesRepo.save(newEntry)
               }
-              // this.logger.debug(`rxlev: ${parsedResponse.getNetworkParameters.rxlev} or ${parsedResponse.getNetworkParameters.rxlevfull} or ${parsedResponse.getNetworkParameters.rxlevsub}`)
-              port.write(commands.getNetworkParameters)
+              // this.logger.debug(`rxlev: ${parsedResponse.getGSMNetworkParameters.rxlev} or ${parsedResponse.getGSMNetworkParameters.rxlevfull} or ${parsedResponse.getGSMNetworkParameters.rxlevsub}`)
+              await sleep(WAIT_TO_NEXT_COMMAND_IN_MILISECOND)
+              port.write(commands.getGSMNetworkParameters)
+            }
+          }
+        }
+
+        ////////////////// WCDMA ///////////////////////////////
+
+        if (parsedResponse && parsedResponse['lockWCDMA']) {
+          if (parsedResponse['lockWCDMA']['cmeErrorCode']) {
+            const entry = await this.quectelsRepo.update(
+              { serialPortNumber: portNumber },
+              { lockStatus: `WCDMA lock error: ${cmeErrCodeToDesc(parsedResponse['lockWCDMA']['cmeErrorCode'])}` },
+            )
+            port.write(commands.lockWCDMA)
+          }
+          else if (parsedResponse['lockWCDMA']['cmsErrorCode']) {
+            const entry = await this.quectelsRepo.update(
+              { serialPortNumber: portNumber },
+              { lockStatus: `WCDMA lock error: ${cmsErrCodeToDesc(parsedResponse['lockWCDMA']['cmsErrorCode'])}` },
+            )
+            port.write(commands.lockWCDMA)
+          }
+          else {
+            const entry = await this.quectelsRepo.update(
+              { serialPortNumber: portNumber },
+              { lockStatus: parsedResponse['lockWCDMA']['status'] },
+            )
+
+            const thidScenario = (await this.quectelsRepo.findOne({ where: { serialPortNumber: portNumber }, select: { activeScenario: true } })).activeScenario
+            if (thidScenario === scenarioName.WCDMAIdle) {
+              port.write(commands.getWCDMANetworkParameters)
+            }
+          }
+        }
+
+        if (parsedResponse && parsedResponse['getWCDMANetworkParameters']) {
+          if (parsedResponse['getWCDMANetworkParameters']['cmeErrorCode']) {
+            port.write(commands.getWCDMANetworkParameters)
+          }
+          else if (parsedResponse['getWCDMANetworkParameters']['cmsErrorCode']) {
+            port.write(commands.getWCDMANetworkParameters)
+          }
+          else {
+            const thidScenario = (await this.quectelsRepo.findOne({ where: { serialPortNumber: portNumber }, select: { activeScenario: true } })).activeScenario
+
+            if (thidScenario === scenarioName.WCDMAIdle) {
+              if (this.logStarted) {
+                const newEntry = this.wcdmaIdlesRepo.create({
+                  tech: parsedResponse.getWCDMANetworkParameters.tech,
+                  mcc: parsedResponse.getWCDMANetworkParameters.mcc,
+                  mnc: parsedResponse.getWCDMANetworkParameters.mnc,
+                  lac: parsedResponse.getWCDMANetworkParameters.lac,
+                  cellid: parsedResponse.getWCDMANetworkParameters.cellid,
+                  uarfcn: parsedResponse.getWCDMANetworkParameters.uarfcn,
+                  psc: parsedResponse.getWCDMANetworkParameters.psc,
+                  rac: parsedResponse.getWCDMANetworkParameters.rac,
+                  rscp: parsedResponse.getWCDMANetworkParameters.rscp,
+                  ecio: parsedResponse.getWCDMANetworkParameters.ecio,
+                  phych: parsedResponse.getWCDMANetworkParameters.phych,
+                  sf: parsedResponse.getWCDMANetworkParameters.sf,
+                  slot: parsedResponse.getWCDMANetworkParameters.slot,
+                  speech_code: parsedResponse.getWCDMANetworkParameters.speech_code,
+                  comMod: parsedResponse.getWCDMANetworkParameters.comMod,
+                  inspection: this.inspection,
+                })
+                const save = await this.wcdmaIdlesRepo.save(newEntry)
+              }
+              // this.logger.debug(`rscp: ${parsedResponse.getWCDMANetworkParameters.rscp} - uarfcn: ${parsedResponse.getWCDMANetworkParameters.uarfcn}`)
+              await sleep(WAIT_TO_NEXT_COMMAND_IN_MILISECOND)
+              port.write(commands.getWCDMANetworkParameters)
+            }
+          }
+        }
+
+        ////////////////// LTE ///////////////////////////////
+
+        if (parsedResponse && parsedResponse['lockLTE']) {
+          if (parsedResponse['lockLTE']['cmeErrorCode']) {
+            const entry = await this.quectelsRepo.update(
+              { serialPortNumber: portNumber },
+              { lockStatus: `LTE lock error: ${cmeErrCodeToDesc(parsedResponse['lockLTE']['cmeErrorCode'])}` },
+            )
+            port.write(commands.lockLTE)
+          }
+          else if (parsedResponse['lockLTE']['cmsErrorCode']) {
+            const entry = await this.quectelsRepo.update(
+              { serialPortNumber: portNumber },
+              { lockStatus: `LTE lock error: ${cmsErrCodeToDesc(parsedResponse['lockLTE']['cmsErrorCode'])}` },
+            )
+            port.write(commands.lockLTE)
+          }
+          else {
+            const entry = await this.quectelsRepo.update(
+              { serialPortNumber: portNumber },
+              { lockStatus: parsedResponse['lockLTE']['status'] },
+            )
+
+            const thidScenario = (await this.quectelsRepo.findOne({ where: { serialPortNumber: portNumber }, select: { activeScenario: true } })).activeScenario
+            if (thidScenario === scenarioName.LTEIdle) {
+              port.write(commands.getLTENetworkParameters)
+            }
+          }
+        }
+
+        if (parsedResponse && parsedResponse['getLTENetworkParameters']) {
+          if (parsedResponse['getLTENetworkParameters']['cmeErrorCode']) {
+            port.write(commands.getLTENetworkParameters)
+          }
+          else if (parsedResponse['getLTENetworkParameters']['cmsErrorCode']) {
+            port.write(commands.getLTENetworkParameters)
+          }
+          else {
+            const thidScenario = (await this.quectelsRepo.findOne({ where: { serialPortNumber: portNumber }, select: { activeScenario: true } })).activeScenario
+
+            if (thidScenario === scenarioName.LTEIdle) {
+              if (this.logStarted) {
+                const newEntry = this.lteIdlesRepo.create({
+                  is_tdd: parsedResponse.getLTENetworkParameters.is_tdd,
+                  mmc: parsedResponse.getLTENetworkParameters.mmc,
+                  mnc: parsedResponse.getLTENetworkParameters.mnc,
+                  cellid: parsedResponse.getLTENetworkParameters.cellid,
+                  pcid: parsedResponse.getLTENetworkParameters.pcid,
+                  earfcn: parsedResponse.getLTENetworkParameters.earfcn,
+                  freq_band_ind: parsedResponse.getLTENetworkParameters.freq_band_ind,
+                  ul_bandwidth: parsedResponse.getLTENetworkParameters.ul_bandwidth,
+                  dl_bandwidth: parsedResponse.getLTENetworkParameters.dl_bandwidth,
+                  tac: parsedResponse.getLTENetworkParameters.tac,
+                  rsrp: parsedResponse.getLTENetworkParameters.rsrp,
+                  rsrq: parsedResponse.getLTENetworkParameters.rsrq,
+                  rssi: parsedResponse.getLTENetworkParameters.rssi,
+                  sinr: parsedResponse.getLTENetworkParameters.sinr,
+                  srxlev: parsedResponse.getLTENetworkParameters.srxlev,
+                  inspection: this.inspection,
+                })
+                const save = await this.lteIdlesRepo.save(newEntry)
+              }
+              // this.logger.debug(`rsrp: ${parsedResponse.getLTENetworkParameters.rsrp} - earfcn: ${parsedResponse.getLTENetworkParameters.earfcn}`)
+              await sleep(WAIT_TO_NEXT_COMMAND_IN_MILISECOND)
+              port.write(commands.getLTENetworkParameters)
             }
           }
         }
@@ -814,6 +1033,14 @@ export class ProbService implements OnModuleInit {
                 switch (module.activeScenario) {
                   case scenarioName.GSMIdle:
                     this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.lockGSM)
+                    break;
+
+                  case scenarioName.WCDMAIdle:
+                    this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.lockWCDMA)
+                    break;
+
+                  case scenarioName.LTEIdle:
+                    this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.lockLTE)
                     break;
 
                   default:
