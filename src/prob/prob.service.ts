@@ -340,23 +340,24 @@ const parseData = (response: string) => {
         }
       if (key === 'lockLTE') return { [key]: { 'status': 'LTE_LOCK_OK' } }
       if (key === 'getLTENetworkParameters')
-        return {//"is_tdd","mmc","mnc","cellid","pcid","earfcn","freq_band_ind","ul_bandwidth","dl_bandwidth","tac","rsrp","rsrq","rssi","sinr","srxlev"
+        return {//"is_tdd","mcc","mnc","cellid","pcid","earfcn","freq_band_ind","ul_bandwidth","dl_bandwidth","tac","rsrp","rsrq","rssi","sinr","srxlev"
           [key]: {
-            'is_tdd': correctMatches[2].trim(),
-            'mmc': correctMatches[3].trim(),
-            'mnc': correctMatches[4].trim(),
-            'cellid': correctMatches[5].trim(),
-            'pcid': correctMatches[6].trim(),
-            'earfcn': correctMatches[7].trim(),
-            'freq_band_ind': correctMatches[8].trim(),
-            'ul_bandwidth': correctMatches[9].trim(),
-            'dl_bandwidth': correctMatches[10].trim(),
-            'tac': correctMatches[11].trim(),
-            'rsrp': correctMatches[12].trim(),
-            'rsrq': correctMatches[13].trim(),
-            'rssi': correctMatches[14].trim(),
-            'sinr': correctMatches[15].trim(),
-            'srxlev': correctMatches[16].trim(),
+            'tech': correctMatches[2].trim(),
+            'is_tdd': correctMatches[3].trim(),
+            'mcc': correctMatches[4].trim(),
+            'mnc': correctMatches[5].trim(),
+            'cellid': correctMatches[6].trim(),
+            'pcid': correctMatches[7].trim(),
+            'earfcn': correctMatches[8].trim(),
+            'freq_band_ind': correctMatches[9].trim(),
+            'ul_bandwidth': correctMatches[10].trim(),
+            'dl_bandwidth': correctMatches[11].trim(),
+            'tac': correctMatches[12].trim(),
+            'rsrp': correctMatches[13].trim(),
+            'rsrq': correctMatches[14].trim(),
+            'rssi': correctMatches[15].trim(),
+            'sinr': correctMatches[16].trim(),
+            'srxlev': correctMatches[17].trim(),
           }
         }
     }
@@ -742,6 +743,7 @@ export class ProbService implements OnModuleInit {
                 const save = await this.gsmIdlesRepo.save(newEntry)
               }
               // this.logger.debug(`rxlev: ${parsedResponse.getGSMNetworkParameters.rxlev} or ${parsedResponse.getGSMNetworkParameters.rxlevfull} or ${parsedResponse.getGSMNetworkParameters.rxlevsub}`)
+              this.logger.log(portNumber)
               await sleep(WAIT_TO_NEXT_COMMAND_IN_MILISECOND)
               port.write(commands.getGSMNetworkParameters)
             }
@@ -860,8 +862,9 @@ export class ProbService implements OnModuleInit {
             if (thidScenario === scenarioName.LTEIdle) {
               if (this.logStarted) {
                 const newEntry = this.lteIdlesRepo.create({
+                  tech: parsedResponse.getLTENetworkParameters.tech,
                   is_tdd: parsedResponse.getLTENetworkParameters.is_tdd,
-                  mmc: parsedResponse.getLTENetworkParameters.mmc,
+                  mcc: parsedResponse.getLTENetworkParameters.mcc,
                   mnc: parsedResponse.getLTENetworkParameters.mnc,
                   cellid: parsedResponse.getLTENetworkParameters.cellid,
                   pcid: parsedResponse.getLTENetworkParameters.pcid,
@@ -928,7 +931,15 @@ export class ProbService implements OnModuleInit {
     const allEntries: Quectel[] = (
       await this.quectelsRepo
         .createQueryBuilder()
-        .select(['serialPortNumber', 'modelName', 'IMEI', 'IMSI', 'simStatus', 'isGPSActive', 'activeScenario'])
+        .select([
+          'MAX(serialPortNumber) AS serialPortNumber',
+          'MAX(modelName) as modelName',
+          'MAX(IMEI) AS IMEI',
+          'MAX(IMSI) AS IMSI',
+          'MAX(simStatus) AS simStatus',
+          'MAX(isGPSActive) AS isGPSActive',
+          'MAX(activeScenario) AS activeScenario'
+        ])
         .groupBy('IMEI')
         .orderBy('modelName', 'DESC')
         .getRawMany()

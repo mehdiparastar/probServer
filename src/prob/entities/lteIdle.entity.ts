@@ -7,10 +7,13 @@ export class LTEIdle {
     id: number;
 
     @Column({ nullable: true })
+    tech: string
+
+    @Column({ nullable: true })
     is_tdd: string
 
     @Column({ nullable: true })
-    mmc: string
+    mcc: string
 
     @Column({ nullable: true })
     mnc: string

@@ -6,6 +6,7 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 import { AllExceptionFilter } from './exceptions/all-exceptions.filter';
 import { DatabaseModule } from './database.module';
+import typeorm from './typeorm';
 
 const nodeENV = process.env.NODE_ENV;
 
@@ -13,7 +14,8 @@ const nodeENV = process.env.NODE_ENV;
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: `.${nodeENV}.env`,
+      load: [typeorm],
+      // envFilePath: `.${nodeENV}.env`,
     }),
     DatabaseModule,
     ProbModule
