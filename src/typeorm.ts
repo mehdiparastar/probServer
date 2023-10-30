@@ -13,7 +13,7 @@ import { TypeOrmModuleOptions } from "@nestjs/typeorm";
 dotenvConfig({ path: `.${process.env.NODE_ENV}.env` })
 
 const config: TypeOrmModuleOptions = {
-  type: 'mariadb',
+  type: 'mysql',
   logging: false,
   host: `${process.env.MYSQL_HOST}`,
   port: Number(process.env.MYSQL_PORT),
@@ -21,7 +21,7 @@ const config: TypeOrmModuleOptions = {
   password: `${process.env.MYSQL_PASSWORD}`,
   database: `${process.env.MYSQL_DB_NAME}`,
   migrations: ["dist/migrations/*{.ts,.js}"],
-  synchronize: false,
+  synchronize: true,
   entities: [
     User,
     Quectel,

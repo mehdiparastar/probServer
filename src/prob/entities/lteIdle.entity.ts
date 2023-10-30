@@ -1,5 +1,6 @@
-import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { Inspection } from "./inspection.entity";
+import { GPSData } from "./gps-data.entity";
 
 @Entity()
 export class LTEIdle {
@@ -56,6 +57,9 @@ export class LTEIdle {
 
     @ManyToOne(() => Inspection, (inspection) => inspection.lteIdles, { nullable: false })
     inspection: Inspection;
+
+    @ManyToOne(() => GPSData, (location) => location.lteIdleSamples, { nullable: true })
+    location: GPSData
 
     @CreateDateColumn()
     createdAt?: Date;

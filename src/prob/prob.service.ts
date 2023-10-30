@@ -14,10 +14,11 @@ import { Inspection } from './entities/inspection.entity';
 import { GSMIdle } from './entities/gsmIdle.entity';
 import { WCDMAIdle } from './entities/wcdmaIdle.entity';
 import { LTEIdle } from './entities/lteIdle.entity';
+import { Like } from 'typeorm'
 
 const serialPortCount = 32
 
-const WAIT_TO_NEXT_COMMAND_IN_MILISECOND = 400
+const WAIT_TO_NEXT_COMMAND_IN_MILISECOND = 600
 
 const serialPortInterfaces = [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15], [16, 17, 18, 19], [20, 21, 22, 23], [24, 25, 26, 27], [28, 29, 30, 31]]
 
@@ -692,11 +693,6 @@ export class ProbService implements OnModuleInit {
               { serialPortNumber: portNumber },
               { lockStatus: parsedResponse['lockGSM']['status'] },
             )
-
-            const thidScenario = (await this.quectelsRepo.findOne({ where: { serialPortNumber: portNumber }, select: { activeScenario: true } })).activeScenario
-            if (thidScenario === scenarioName.GSMIdle) {
-              port.write(commands.getGSMNetworkParameters)
-            }
           }
         }
 
@@ -712,6 +708,13 @@ export class ProbService implements OnModuleInit {
 
             if (thidScenario === scenarioName.GSMIdle) {
               if (this.logStarted) {
+                const location = await this.gpsDataRepo
+                  .createQueryBuilder()
+                  .where('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt)) <= 1000000') // One second has 1,000,000 microseconds
+                  .orderBy('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt))', 'ASC')
+                  .setParameter('desiredCreatedAt', new Date())
+                  .getOne();
+
                 const newEntry = this.gsmIdlesRepo.create({
                   tech: parsedResponse.getGSMNetworkParameters.tech,
                   mcc: parsedResponse.getGSMNetworkParameters.mcc,
@@ -739,13 +742,12 @@ export class ProbService implements OnModuleInit {
                   rxqualfull: parsedResponse.getGSMNetworkParameters.rxqualfull,
                   voicecodec: parsedResponse.getGSMNetworkParameters.voicecodec,
                   inspection: this.inspection,
+                  location: location
                 })
+                // const find = await this.gpsDataRepo.find({ where: { createdAt: Like((new Date()).toISOString().replace('T'," ").slice(0, -4) + '%') } })
                 const save = await this.gsmIdlesRepo.save(newEntry)
               }
               // this.logger.debug(`rxlev: ${parsedResponse.getGSMNetworkParameters.rxlev} or ${parsedResponse.getGSMNetworkParameters.rxlevfull} or ${parsedResponse.getGSMNetworkParameters.rxlevsub}`)
-              this.logger.log(portNumber)
-              await sleep(WAIT_TO_NEXT_COMMAND_IN_MILISECOND)
-              port.write(commands.getGSMNetworkParameters)
             }
           }
         }
@@ -772,11 +774,6 @@ export class ProbService implements OnModuleInit {
               { serialPortNumber: portNumber },
               { lockStatus: parsedResponse['lockWCDMA']['status'] },
             )
-
-            const thidScenario = (await this.quectelsRepo.findOne({ where: { serialPortNumber: portNumber }, select: { activeScenario: true } })).activeScenario
-            if (thidScenario === scenarioName.WCDMAIdle) {
-              port.write(commands.getWCDMANetworkParameters)
-            }
           }
         }
 
@@ -792,6 +789,13 @@ export class ProbService implements OnModuleInit {
 
             if (thidScenario === scenarioName.WCDMAIdle) {
               if (this.logStarted) {
+                const location = await this.gpsDataRepo
+                  .createQueryBuilder()
+                  .where('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt)) <= 1000000') // One second has 1,000,000 microseconds
+                  .orderBy('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt))', 'ASC')
+                  .setParameter('desiredCreatedAt', new Date())
+                  .getOne();
+
                 const newEntry = this.wcdmaIdlesRepo.create({
                   tech: parsedResponse.getWCDMANetworkParameters.tech,
                   mcc: parsedResponse.getWCDMANetworkParameters.mcc,
@@ -809,12 +813,11 @@ export class ProbService implements OnModuleInit {
                   speech_code: parsedResponse.getWCDMANetworkParameters.speech_code,
                   comMod: parsedResponse.getWCDMANetworkParameters.comMod,
                   inspection: this.inspection,
+                  location: location
                 })
                 const save = await this.wcdmaIdlesRepo.save(newEntry)
               }
-              // this.logger.debug(`rscp: ${parsedResponse.getWCDMANetworkParameters.rscp} - uarfcn: ${parsedResponse.getWCDMANetworkParameters.uarfcn}`)
-              await sleep(WAIT_TO_NEXT_COMMAND_IN_MILISECOND)
-              port.write(commands.getWCDMANetworkParameters)
+              // this.logger.debug(`rscp: ${parsedResponse.getWCDMANetworkParameters.rscp} - uarfcn: ${parsedResponse.getWCDMANetworkParameters.uarfcn}`)              
             }
           }
         }
@@ -841,11 +844,6 @@ export class ProbService implements OnModuleInit {
               { serialPortNumber: portNumber },
               { lockStatus: parsedResponse['lockLTE']['status'] },
             )
-
-            const thidScenario = (await this.quectelsRepo.findOne({ where: { serialPortNumber: portNumber }, select: { activeScenario: true } })).activeScenario
-            if (thidScenario === scenarioName.LTEIdle) {
-              port.write(commands.getLTENetworkParameters)
-            }
           }
         }
 
@@ -861,6 +859,13 @@ export class ProbService implements OnModuleInit {
 
             if (thidScenario === scenarioName.LTEIdle) {
               if (this.logStarted) {
+                const location = await this.gpsDataRepo
+                  .createQueryBuilder()
+                  .where('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt)) <= 1000000') // One second has 1,000,000 microseconds
+                  .orderBy('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt))', 'ASC')
+                  .setParameter('desiredCreatedAt', new Date())
+                  .getOne();
+
                 const newEntry = this.lteIdlesRepo.create({
                   tech: parsedResponse.getLTENetworkParameters.tech,
                   is_tdd: parsedResponse.getLTENetworkParameters.is_tdd,
@@ -879,12 +884,11 @@ export class ProbService implements OnModuleInit {
                   sinr: parsedResponse.getLTENetworkParameters.sinr,
                   srxlev: parsedResponse.getLTENetworkParameters.srxlev,
                   inspection: this.inspection,
+                  location: location
                 })
                 const save = await this.lteIdlesRepo.save(newEntry)
               }
-              // this.logger.debug(`rsrp: ${parsedResponse.getLTENetworkParameters.rsrp} - earfcn: ${parsedResponse.getLTENetworkParameters.earfcn}`)
-              await sleep(WAIT_TO_NEXT_COMMAND_IN_MILISECOND)
-              port.write(commands.getLTENetworkParameters)
+              // this.logger.debug(`rsrp: ${parsedResponse.getLTENetworkParameters.rsrp} - earfcn: ${parsedResponse.getLTENetworkParameters.earfcn}`)              
             }
           }
         }
@@ -1043,15 +1047,51 @@ export class ProbService implements OnModuleInit {
               for (const module of allEntries) {
                 switch (module.activeScenario) {
                   case scenarioName.GSMIdle:
-                    this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.lockGSM)
+                    this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.lockGSM, async (err) => {
+                      if (!err) {
+                        await sleep(400)
+
+                        const intervalId = setInterval(
+                          () => {
+                            this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getGSMNetworkParameters)
+                          },
+                          WAIT_TO_NEXT_COMMAND_IN_MILISECOND
+                        )
+
+                      }
+                    })
                     break;
 
                   case scenarioName.WCDMAIdle:
-                    this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.lockWCDMA)
+                    this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.lockWCDMA, async (err) => {
+                      if (!err) {
+                        await sleep(400)
+
+                        const intervalId = setInterval(
+                          () => {
+                            this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getWCDMANetworkParameters)
+                          },
+                          WAIT_TO_NEXT_COMMAND_IN_MILISECOND
+                        )
+
+                      }
+                    })
                     break;
 
                   case scenarioName.LTEIdle:
-                    this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.lockLTE)
+                    this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.lockLTE, async (err) => {
+                      if (!err) {
+                        await sleep(400)
+
+                        const intervalId = setInterval(
+                          () => {
+                            this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getLTENetworkParameters)
+                          },
+                          WAIT_TO_NEXT_COMMAND_IN_MILISECOND
+                        )
+
+                      }
+                    })
                     break;
 
                   default:

@@ -1,5 +1,6 @@
-import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { Inspection } from "./inspection.entity";
+import { GPSData } from "./gps-data.entity";
 
 @Entity()
 export class WCDMAIdle {
@@ -53,6 +54,9 @@ export class WCDMAIdle {
 
     @ManyToOne(() => Inspection, (inspection) => inspection.wcdmaIdles, { nullable: false })
     inspection: Inspection;
+
+    @ManyToOne(() => GPSData, (location) => location.wcdmaIdleSamples, { nullable: true })
+    location: GPSData
 
     @CreateDateColumn()
     createdAt?: Date;
