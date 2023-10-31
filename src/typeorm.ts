@@ -9,6 +9,8 @@ import { DataSource, DataSourceOptions } from "typeorm";
 import { config as dotenvConfig } from 'dotenv';
 import { registerAs } from "@nestjs/config";
 import { TypeOrmModuleOptions } from "@nestjs/typeorm";
+import { ALLTECHIdle } from "./prob/entities/alltechIdle.entity";
+import { GSMLongCall } from "./prob/entities/gsmLongCall.entity";
 
 dotenvConfig({ path: `.${process.env.NODE_ENV}.env` })
 
@@ -29,7 +31,9 @@ const config: TypeOrmModuleOptions = {
     Inspection,
     GSMIdle,
     WCDMAIdle,
-    LTEIdle
+    LTEIdle,
+    ALLTECHIdle,
+    GSMLongCall
   ],
 };
 

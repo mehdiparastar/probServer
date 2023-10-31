@@ -39,6 +39,9 @@ export class Quectel {
     @Column({ nullable: true, default: 'allTech' })
     lockStatus?: string
 
+    @Column({ nullable: true })
+    callability?: boolean
+
     @CreateDateColumn()
     createdAt?: Date;
 

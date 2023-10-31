@@ -10,10 +10,15 @@ export enum commands {
     lockWCDMA = 'AT+QCFG="nwscanmode",2\r\n',
     lockLTE = 'AT+QCFG="nwscanmode",3\r\n',
     allTech = 'AT+QCFG="nwscanmode",0\r\n',
-    callMCI = 'ATD04151003609\r\n',
-    callMTN = 'ATD04151003609\r\n',
-    callRTL = 'ATD04151003609\r\n',
+    callMCI = 'ATD04151003609;\r\n',
+    callMTN = 'ATD04151003609;\r\n',
+    callMCI_ = 'ATD02181713999;\r\n',
+    callMTN_ = 'ATD712;\r\n',
+    callRTL = 'ATD04151003609;\r\n',
     getGSMNetworkParameters = 'AT+QENG="servingcell";\r\n',
     getWCDMANetworkParameters = 'AT+QENG="servingcell";\r\n',
     getLTENetworkParameters = 'AT+QENG="servingcell";\r\n',
+    getAllTechNetworkParameters = 'AT+QENG="servingcell";\r\n',
+    hangUpCall = "ATH\r\n",
+    getCallStatus = "AT+CPAS\r\n"
 }
