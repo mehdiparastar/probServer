@@ -18,6 +18,7 @@ import { Like } from 'typeorm'
 import { ALLTECHIdle } from './entities/alltechIdle.entity';
 import { GSMLongCall } from './entities/gsmLongCall.entity';
 import { callStatus } from './enum/callStatus.enum';
+import { WCDMALongCall } from './entities/wcdmaLongCall.entity';
 
 const serialPortCount = 32
 
@@ -474,6 +475,7 @@ export class ProbService implements OnModuleInit {
     @InjectRepository(LTEIdle) private lteIdlesRepo: Repository<LTEIdle>,
     @InjectRepository(ALLTECHIdle) private allTechIdlesRepo: Repository<ALLTECHIdle>,
     @InjectRepository(GSMLongCall) private gsmLongCallRepo: Repository<GSMLongCall>,
+    @InjectRepository(WCDMALongCall) private wcdmaLongCallRepo: Repository<WCDMALongCall>,
   ) {
 
     this.allPortsInitializing()
@@ -683,21 +685,23 @@ export class ProbService implements OnModuleInit {
             )
             this.logger.debug(parsedResponse['simStatus']['status'])
 
-            port.write((this.imsiDict[`ttyUSB${portNumber}`]).slice(0, 6).includes('35') ? commands.callMTN_ : commands.callMCI_, async (err) => {
-              if (err) {
-                const entry = await this.quectelsRepo.update(
-                  { serialPortNumber: portNumber },
-                  { callability: false },
-                )
-              }
-              else {
-                port.write(commands.hangUpCall)
-                const entry = await this.quectelsRepo.update(
-                  { serialPortNumber: portNumber },
-                  { callability: true },
-                )
-              }
-            })
+            port.write(
+              makeCallCommand(this.imsiDict[`ttyUSB${portNumber}`]),
+              async (err) => {
+                if (err) {
+                  const entry = await this.quectelsRepo.update(
+                    { serialPortNumber: portNumber },
+                    { callability: false },
+                  )
+                }
+                else {
+                  port.write(commands.hangUpCall)
+                  const entry = await this.quectelsRepo.update(
+                    { serialPortNumber: portNumber },
+                    { callability: true },
+                  )
+                }
+              })
           }
 
           port.write(commands.enableGPS)
@@ -886,7 +890,6 @@ export class ProbService implements OnModuleInit {
                 const save = await this.gsmLongCallRepo.save(newEntry)
               }
             }
-
           }
         }
 
@@ -985,6 +988,38 @@ export class ProbService implements OnModuleInit {
                   location: location
                 })
                 const save = await this.allTechIdlesRepo.save(newEntry)
+              }
+            }
+            if (thisScenario === scenarioName.WCDMALongCall) {
+              if (this.logStarted) {
+                const location = await this.gpsDataRepo
+                  .createQueryBuilder()
+                  .where('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt)) <= 1000000') // One second has 1,000,000 microseconds
+                  .orderBy('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt))', 'ASC')
+                  .setParameter('desiredCreatedAt', new Date())
+                  .getOne();
+
+                const newEntry = this.wcdmaLongCallRepo.create({
+                  tech: parsedResponse.getWCDMANetworkParameters.tech,
+                  mcc: parsedResponse.getWCDMANetworkParameters.mcc,
+                  mnc: parsedResponse.getWCDMANetworkParameters.mnc,
+                  lac: parsedResponse.getWCDMANetworkParameters.lac,
+                  cellid: parsedResponse.getWCDMANetworkParameters.cellid,
+                  uarfcn: parsedResponse.getWCDMANetworkParameters.uarfcn,
+                  psc: parsedResponse.getWCDMANetworkParameters.psc,
+                  rac: parsedResponse.getWCDMANetworkParameters.rac,
+                  rscp: parsedResponse.getWCDMANetworkParameters.rscp,
+                  ecio: parsedResponse.getWCDMANetworkParameters.ecio,
+                  phych: parsedResponse.getWCDMANetworkParameters.phych,
+                  sf: parsedResponse.getWCDMANetworkParameters.sf,
+                  slot: parsedResponse.getWCDMANetworkParameters.slot,
+                  speech_code: parsedResponse.getWCDMANetworkParameters.speech_code,
+                  comMod: parsedResponse.getWCDMANetworkParameters.comMod,
+                  callingStatus: this.callingStatus[`ttyUSB${portNumber}`] === '4' ? callStatus.Dedicate : callStatus.Idle,                  
+                  inspection: this.inspection,
+                  location: location
+                })
+                const save = await this.wcdmaLongCallRepo.save(newEntry)
               }
             }
           }
@@ -1354,6 +1389,30 @@ export class ProbService implements OnModuleInit {
 
                   case scenarioName.GSMLongCall:
                     this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.lockGSM, async (err) => {
+                      if (!err) {
+                        await sleep(5000)
+                        this.serialPort[`ttyUSB${module.serialPortNumber}`].write(makeCallCommand(this.imsiDict[`ttyUSB${module.serialPortNumber}`]))
+                        await sleep(5000)
+                        const checkCallStatusIntervalId = setInterval(
+                          () => {
+                            this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getCallStatus)
+                          },
+                          2000
+                        )
+                        await sleep(2000)
+                        const getNetParamsIntervalId = setInterval(
+                          () => {
+                            this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getGSMNetworkParameters)
+                          },
+                          WAIT_TO_NEXT_COMMAND_IN_MILISECOND
+                        )
+
+                      }
+                    })
+                    break;
+
+                  case scenarioName.WCDMALongCall:
+                    this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.lockWCDMA, async (err) => {
                       if (!err) {
                         await sleep(5000)
                         this.serialPort[`ttyUSB${module.serialPortNumber}`].write(makeCallCommand(this.imsiDict[`ttyUSB${module.serialPortNumber}`]))

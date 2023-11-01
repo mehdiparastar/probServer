@@ -11,6 +11,7 @@ import { registerAs } from "@nestjs/config";
 import { TypeOrmModuleOptions } from "@nestjs/typeorm";
 import { ALLTECHIdle } from "./prob/entities/alltechIdle.entity";
 import { GSMLongCall } from "./prob/entities/gsmLongCall.entity";
+import { WCDMALongCall } from "./prob/entities/wcdmaLongCall.entity";
 
 dotenvConfig({ path: `.${process.env.NODE_ENV}.env` })
 
@@ -33,7 +34,8 @@ const config: TypeOrmModuleOptions = {
     WCDMAIdle,
     LTEIdle,
     ALLTECHIdle,
-    GSMLongCall
+    GSMLongCall,
+    WCDMALongCall
   ],
 };
 
