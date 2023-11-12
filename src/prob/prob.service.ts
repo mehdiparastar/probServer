@@ -44,9 +44,15 @@ const correctPattern = {
   'getLTENetworkParameters': /AT\+QENG="servingcell";\r\r\n\+QENG: "servingcell","(-?\w+)","(-?\w+)","(-?\w+)",(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+)/,
   // AT+QENG="servingcell";\r\r\n+QENG: "servingcell","NOCONN","LTE","FDD",432,11,6442235,354,3102,7,5,5,866B,-97,-13,-64,3,22\r\n\r\nOK\r\n
   // AT+QENG="servingcell";\r\r\n+QENG: "servingcell","NOCONN","LTE","FDD",432,35,1E77017,456,2850,7,5,5,584E,-100,-17,-62,-1,23\r\n\r\nOK\r\n
-  'getCallStatus': /AT\+CPAS\r\r\n\+CPAS: (\d+)\r\n\r\nOK\r\n/
+  'getCallStatus': /AT\+CPAS\r\r\n\+CPAS: (\d+)\r\n\r\nOK\r\n/,
   // 'AT+CPAS\r\r\n+CPAS: 4\r\n\r\nOK\r\n'
-
+  'getCurrentAPN': /AT\+CGDCONT\?\r\r\n\+CGDCONT: (\d+),"(\w+)","(\w+)","(\d+.\d+.\d+.\d+)",.*\r\n\r\nOK\r\n/,
+  'getDataConnectivityStatus': /AT\+QIACT\?\r\r\n\+QIACT: (\d+),(\d+),(\d+),"(\w+)"\r\n/,
+  'getFtpStat': /AT\+QFTPSTAT\r\r\nOK\r\n\r\n\+QFTPSTAT: 0,(\d+)\r\n/,
+  'ftpGetComplete': /\r\n\+QFTPGET: 0,(\d+)\r\n/,
+  'getMCIFTPDownloadedFileSize': /.*\r\n\+QFLST: "UFS:QuectelMSDocs.zip",(\d+)\r\n\r\nOK\r\n/
+  // 'AT+QFLST="UFS:QuectelMSDocs.zip"\r\r\n+QFLST: "UFS:QuectelMSDocs.zip",57897070\r\n\r\nOK\r\n'
+  // \r\n+QFLST: "UFS:QuectelMSDocs.zip",57897070\r\n\r\nOK\r\n
 }
 
 const cmeErrorPattern = {
@@ -64,7 +70,9 @@ const cmeErrorPattern = {
   'getWCDMANetworkParameters': /AT\+QENG="servingcell";\r\r\n\+CME ERROR: (\d+)\r\n/,
   'getLTENetworkParameters': /AT\+QENG="servingcell";\r\r\n\+CME ERROR: (\d+)\r\n/,
   'getCallStatus': /AT\+CPAS\r\r\n\+CME ERROR: (\d+)\r\n/,
-
+  'getCurrentAPN': /AT\+CGDCONT\?\r\r\n\+CME ERROR: (\d+)\r\n/,
+  'getDataConnectivityStatus': /AT\+QIACT\?\r\r\n\+CME ERROR: (\d+)\r\n/,
+  'getFtpStat': /AT\+QFTPSTAT\r\r\n\+CME ERROR: (\d+)\r\n/,
 }
 
 const cmsErrorPattern = {
@@ -82,7 +90,9 @@ const cmsErrorPattern = {
   'getWCDMANetworkParameters': /AT\+QENG="servingcell";\r\r\n\+CMS ERROR: (\d+)\r\n/,
   'getLTENetworkParameters': /AT\+QENG="servingcell";\r\r\n\+CMS ERROR: (\d+)\r\n/,
   'getCallStatus': /AT\+CPAS\r\r\n\+CMS ERROR: (\d+)\r\n/,
-
+  'getCurrentAPN': /AT\+CGDCONT\?\r\r\n\+CMS ERROR: (\d+)\r\n/,
+  'getDataConnectivityStatus': /AT\+QIACT\?\r\r\n\+CMS ERROR: (\d+)\r\n/,
+  'getFtpStat': /AT\+QFTPSTAT\r\r\n\+CMS ERROR: (\d+)\r\n/,
 }
 
 function convertDMStoDD(degrees: string, direction: string) {
@@ -276,12 +286,10 @@ const parseData = (response: string) => {
   // if (response.substring(0, 8) === 'AT+CPIN?') {
   // if (response.match(/ATI\r\r\n\+CME ERROR: (\d+)\r\n/)) {
   // if (response.indexOf('nwscanmode') >= 0 && response.indexOf('ERROR') < 0) {
-  if (response.indexOf('nwscanmode') >= 0) {
-    // console.error(response)
-  }
-  if (response.indexOf('CPAS') >= 0) {
-    const stop = true
-  }
+  // if (response.indexOf('nwscanmode') >= 0) {
+  // if (response.indexOf('CPAS') >= 0) {
+  //   const stop = true
+  // }
 
   const correctKeys = Object.keys(correctPattern)
   for (const key of correctKeys) {
@@ -376,7 +384,38 @@ const parseData = (response: string) => {
         }
       if (key === 'allTech') return { [key]: { 'status': 'ALL_TECH_OK' } }
       if (key === 'getCallStatus') return { [key]: { 'status': correctMatches[1].trim() } }
-
+      if (key === 'getCurrentAPN')
+        return {
+          [key]: {
+            'cid': correctMatches[1].trim(),
+            'PDPType': correctMatches[2].trim(),
+            'APNName': correctMatches[3].trim(),
+            'PDPAdd': correctMatches[4].trim(),
+          }
+        }
+      if (key === 'getDataConnectivityStatus')
+        return {
+          [key]: {
+            'contextID': correctMatches[1].trim(),     // Integer type. The context ID. The range is 1-16
+            'contextState': correctMatches[2].trim(),  // Integer type. The context state. 0 Deactivated, 1 Activated
+            'contextType': correctMatches[3].trim(),   // Integer type. The protocol type. 1 IPV4, 2 IPV4V6
+            'ipAddress': correctMatches[4].trim(),     // The local IP address after the context is activated.
+          }
+        }
+      if (key === 'getFtpStat')
+        return {
+          [key]: {
+            'ftpStat': correctMatches[1].trim(),
+            // The current status of FTP(S) server
+            //   0 Opening an FTP(S) server
+            //   1 The FTP(S) server is opened and idle
+            //   2 Transferring data with FTP(S) server
+            //   3 Closing the FTP(S) server
+            //   4 The FTP(S) server is closed
+          }
+        }
+      if (key === 'ftpGetComplete') return { [key]: { 'transferlen': correctMatches[1].trim() } }
+      if (key === 'getMCIFTPDownloadedFileSize') return { [key]: { 'transferlen': correctMatches[1].trim() } }
     }
   }
 
@@ -399,7 +438,9 @@ const parseData = (response: string) => {
       if (key === 'getLTENetworkParameters') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
       if (key === 'allTech') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
       if (key === 'getCallStatus') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
-
+      if (key === 'getCurrentAPN') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
+      if (key === 'getDataConnectivityStatus') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
+      if (key === 'getFtpStat') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
     }
   }
 
@@ -422,6 +463,9 @@ const parseData = (response: string) => {
       if (key === 'getLTENetworkParameters') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
       if (key === 'allTech') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
       if (key === 'getCallStatus') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+      if (key === 'getCurrentAPN') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+      if (key === 'getDataConnectivityStatus') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+      if (key === 'getFtpStat') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
     }
   }
 
@@ -464,6 +508,8 @@ export class ProbService implements OnModuleInit {
   private inspection: Inspection
   private imsiDict: { [portNumber: string]: string } = {}
   private callingStatus: { [portNumber: string]: string } = {}
+  private ftpDLDFileSize: number
+  private ftpDLDFileTime: number
 
   constructor(
     @InjectRepository(User) private usersRepo: Repository<User>,
@@ -510,7 +556,9 @@ export class ProbService implements OnModuleInit {
 
       port.on('data', async (data) => {
         const response = data.toString()
-
+        if (response !== '\r\n' && response.indexOf('GPGSA') < 0 && response.indexOf('GPRMC') < 0 && response.indexOf('GPGSV') < 0 && response.indexOf('GPVTG') < 0 && response.indexOf('GPGGA') < 0 && response.indexOf('servingcell') < 0 && response.indexOf('QFLST: "UFS:QuectelMSDocs.zip"') >= 0) {
+          console.warn(response)
+        }
         if (this.gpsEnabled) {
           if (!this.selectedGPSPort) {
             if (response.includes('$GPGGA') || response.includes('$GPRMC')) {
@@ -1015,7 +1063,7 @@ export class ProbService implements OnModuleInit {
                   slot: parsedResponse.getWCDMANetworkParameters.slot,
                   speech_code: parsedResponse.getWCDMANetworkParameters.speech_code,
                   comMod: parsedResponse.getWCDMANetworkParameters.comMod,
-                  callingStatus: this.callingStatus[`ttyUSB${portNumber}`] === '4' ? callStatus.Dedicate : callStatus.Idle,                  
+                  callingStatus: this.callingStatus[`ttyUSB${portNumber}`] === '4' ? callStatus.Dedicate : callStatus.Idle,
                   inspection: this.inspection,
                   location: location
                 })
@@ -1169,6 +1217,65 @@ export class ProbService implements OnModuleInit {
           }
         }
 
+        ////////////////// FTP DL ////////////////////////
+        if (parsedResponse && parsedResponse['getCurrentAPN']) {
+          if ((this.imsiDict[`ttyUSB${portNumber}`]).slice(0, 6).includes('43211')) {
+            if (parsedResponse.getCurrentAPN.APNName !== 'mcinet') {
+              port.write(commands.setMCIAPN)
+            }
+          }
+        }
+
+        if (parsedResponse && parsedResponse['getDataConnectivityStatus']) {
+          if (parsedResponse.getDataConnectivityStatus.contextState !== '1') {
+            port.write(commands.turnOnData)
+          }
+        }
+
+        if (parsedResponse && parsedResponse['getFtpStat']) {
+          if (parsedResponse.getFtpStat.ftpStat === '4') {
+            if ((this.imsiDict[`ttyUSB${portNumber}`]).slice(0, 6).includes('43211')) {
+              port.write(commands.openMCIFTPConnection)
+            }
+            if ((this.imsiDict[`ttyUSB${portNumber}`]).slice(0, 6).includes('43235')) {
+              port.write(commands.openMTNFTPConnection)
+            }
+          }
+          if (parsedResponse.getFtpStat.ftpStat === '2') {
+            if ((this.imsiDict[`ttyUSB${portNumber}`]).slice(0, 6).includes('43211')) {
+              port.write(commands.getMCIFTPDownloadedFileSize)
+              this.logger.log('getting ftp file size')
+            }
+          }
+          if (parsedResponse.getFtpStat.ftpStat === '1') {
+            if ((this.imsiDict[`ttyUSB${portNumber}`]).slice(0, 6).includes('43211')) {
+              port.write(commands.setFTPGETCURRENTDIRECTORY, (err) => {
+                if (!err) {
+                  port.write(commands.getMCIFTPFile)
+                }
+              })
+              this.ftpDLDFileSize = 0
+              this.ftpDLDFileTime = (new Date()).getTime()
+            }
+          }
+        }
+        if (parsedResponse && parsedResponse['ftpGetComplete']) {
+          port.write(commands.clearUFSStorage)
+          // port.write(commands.closeFtpConn)
+          const speed = ((Number(parsedResponse.ftpGetComplete.transferlen) - this.ftpDLDFileSize) * 1000) / ((new Date()).getTime() - this.ftpDLDFileTime)
+          this.logger.log(`FTP DL Speed: ${speed} KB/s - end`)
+          this.ftpDLDFileSize = 0
+          this.ftpDLDFileTime = (new Date()).getTime()
+        }
+        if (parsedResponse && parsedResponse['getMCIFTPDownloadedFileSize']) {
+          const speed = ((Number(parsedResponse.getMCIFTPDownloadedFileSize.transferlen) - this.ftpDLDFileSize) * 1000) / ((new Date()).getTime() - this.ftpDLDFileTime)
+          this.logger.log(`FTP DL Speed: ${speed} KB/s`)
+          this.ftpDLDFileSize = Number(parsedResponse.getMCIFTPDownloadedFileSize.transferlen) === 57675882 ? 0 : Number(parsedResponse.getMCIFTPDownloadedFileSize.transferlen)
+          this.ftpDLDFileTime = (new Date()).getTime()
+          if (Number(parsedResponse.getMCIFTPDownloadedFileSize.transferlen) === 57675882) {
+            port.write(commands.clearUFSStorage)
+          }
+        }
       });
 
       port.on('error', (err) => {
@@ -1387,52 +1494,118 @@ export class ProbService implements OnModuleInit {
                   //   })
                   //   break;
 
-                  case scenarioName.GSMLongCall:
-                    this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.lockGSM, async (err) => {
-                      if (!err) {
-                        await sleep(5000)
-                        this.serialPort[`ttyUSB${module.serialPortNumber}`].write(makeCallCommand(this.imsiDict[`ttyUSB${module.serialPortNumber}`]))
-                        await sleep(5000)
-                        const checkCallStatusIntervalId = setInterval(
-                          () => {
-                            this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getCallStatus)
-                          },
-                          2000
-                        )
+                  // case scenarioName.GSMLongCall:
+                  //   this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.lockGSM, async (err) => {
+                  //     if (!err) {
+                  //       await sleep(5000)
+                  //       this.serialPort[`ttyUSB${module.serialPortNumber}`].write(makeCallCommand(this.imsiDict[`ttyUSB${module.serialPortNumber}`]))
+                  //       await sleep(5000)
+                  //       const checkCallStatusIntervalId = setInterval(
+                  //         () => {
+                  //           this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getCallStatus)
+                  //         },
+                  //         2000
+                  //       )
+                  //       await sleep(2000)
+                  //       const getNetParamsIntervalId = setInterval(
+                  //         () => {
+                  //           this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getGSMNetworkParameters)
+                  //         },
+                  //         WAIT_TO_NEXT_COMMAND_IN_MILISECOND
+                  //       )
+
+                  //     }
+                  //   })
+                  //   break;
+
+                  // case scenarioName.WCDMALongCall:
+                  //   this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.lockWCDMA, async (err) => {
+                  //     if (!err) {
+                  //       await sleep(5000)
+                  //       this.serialPort[`ttyUSB${module.serialPortNumber}`].write(makeCallCommand(this.imsiDict[`ttyUSB${module.serialPortNumber}`]))
+                  //       await sleep(5000)
+                  //       const checkCallStatusIntervalId = setInterval(
+                  //         () => {
+                  //           this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getCallStatus)
+                  //         },
+                  //         2000
+                  //       )
+                  //       await sleep(2000)
+                  //       const getNetParamsIntervalId = setInterval(
+                  //         () => {
+                  //           this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getGSMNetworkParameters)
+                  //         },
+                  //         WAIT_TO_NEXT_COMMAND_IN_MILISECOND
+                  //       )
+
+                  //     }
+                  //   })
+                  //   break;
+
+                  case scenarioName.FTP_DL_TH:
+                    this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.clearUFSStorage)
+                    await sleep(1000)
+                    this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.allTech,
+                      async () => {
                         await sleep(2000)
-                        const getNetParamsIntervalId = setInterval(
-                          () => {
-                            this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getGSMNetworkParameters)
-                          },
-                          WAIT_TO_NEXT_COMMAND_IN_MILISECOND
-                        )
-
-                      }
-                    })
-                    break;
-
-                  case scenarioName.WCDMALongCall:
-                    this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.lockWCDMA, async (err) => {
-                      if (!err) {
-                        await sleep(5000)
-                        this.serialPort[`ttyUSB${module.serialPortNumber}`].write(makeCallCommand(this.imsiDict[`ttyUSB${module.serialPortNumber}`]))
-                        await sleep(5000)
-                        const checkCallStatusIntervalId = setInterval(
-                          () => {
-                            this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getCallStatus)
-                          },
-                          2000
-                        )
+                        // check APN 
+                        setInterval(
+                          () => { this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getCurrentAPN) }
+                          , 20000)
                         await sleep(2000)
-                        const getNetParamsIntervalId = setInterval(
-                          () => {
-                            this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getGSMNetworkParameters)
+
+                        //check data connectivity
+                        setInterval(
+                          () => { this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getDataConnectivityStatus) }
+                          , 20000)
+                        await sleep(2000)
+
+                        // check ftp configs
+                        setInterval(
+                          async () => {
+                            this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.setFTPContext)
+                            if (this.imsiDict[`ttyUSB${module.serialPortNumber}`].slice(0, 6).includes('43211')) {
+                              this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.setMCIFTPAccount)
+                            }
+                            if (this.imsiDict[`ttyUSB${module.serialPortNumber}`].slice(0, 6).includes('43235')) {
+                              this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.setMTNFTPAccount)
+                            }
+                            this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.setFTPGETFILETYPE)
+                            this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.setFTPGETFILETRANSFERMODE)
+                            this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.setFTPGETTIMEOUT)
+                          }
+                          , 20000)
+
+                        setInterval(
+                          async () => {
+                            this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getFtpStat)
                           },
-                          WAIT_TO_NEXT_COMMAND_IN_MILISECOND
+                          1000
                         )
 
-                      }
-                    })
+
+                        // setInterval(
+                        //   async () => {
+                        //     // this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.openMCIFTPConnection)
+                        //     // await sleep(1000)
+                        //     // this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.setFTPGETCURRENTDIRECTORY)
+                        //   },
+                        //   10000
+                        // )
+                        // await sleep(10000)
+                        // setInterval(() => {
+                        //   // this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getMCIFTPFile, (err) => {
+                        //   //   if (!err) {
+                        //   //     this.logger.error('start to ftp download file')
+                        //   //   }
+                        //   // })
+                        // }, 800)
+                        // await sleep(1000)
+                        // setInterval(() => {
+                        //   // this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getMCIFTPDownloadedFileSize)
+                        // }, 400)
+                      })
+
                     break;
 
                   default:

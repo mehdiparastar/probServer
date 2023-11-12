@@ -20,5 +20,27 @@ export enum commands {
     getLTENetworkParameters = 'AT+QENG="servingcell";\r\n',
     getAllTechNetworkParameters = 'AT+QENG="servingcell";\r\n',
     hangUpCall = "ATH\r\n",
-    getCallStatus = "AT+CPAS\r\n"
+    getCallStatus = "AT+CPAS\r\n",
+    setMCIAPN = 'AT+QICSGP=1,1,"mcinet","","",1\r\n',
+    setMTNAPN = 'AT+QICSGP=1,1,"mtnirancell","","",1\r\n',
+    turnOnData = 'AT+QIACT=1\r\n',
+    turnOffData = 'AT+QIDEACT=1\r\n',
+    getDataConnectivityStatus = 'AT+QIACT?\r\n',
+    setFTPContext = 'AT+QFTPCFG="contextid",1\r\n',
+    setMCIFTPAccount = 'AT+QFTPCFG="account","mci","SIM!mci2020"\r\n',
+    setMTNFTPAccount = 'AT+QFTPCFG="account","ftpuser","irancell$123!@#"\r\n',
+    setFTPGETFILETYPE = 'AT+QFTPCFG="filetype",1\r\n',
+    setFTPGETFILETRANSFERMODE = 'AT+QFTPCFG="transmode",1\r\n',
+    setFTPGETTIMEOUT = 'AT+QFTPCFG="rsptimeout",90\r\n',
+    openMCIFTPConnection = 'AT+QFTPOPEN="10.176.85.73",21\r\n',
+    openMTNFTPConnection = 'AT+QFTPOPEN="172.17.17.14",21\r\n',
+    setFTPGETCURRENTDIRECTORY = 'AT+QFTPCWD="/home/mci"\r\n',
+    getMCIFTPFile = 'AT+QFTPGET="./Upload/QuectelMSDocs.zip","UFS:QuectelMSDocs.zip"\r\n',
+    getMCIFTPDownloadedFileSize = 'AT+QFLST="UFS:QuectelMSDocs.zip"\r\n',
+    getCurrentAPN = 'AT+CGDCONT?\r\n',
+    getFtpStat = 'AT+QFTPSTAT\r\n',
+    closeFtpConn = 'AT+QFTPCLOSE\r\n',
+    getFTPCurrentDirectory = 'AT+QFTPPWD\r\n',
+    clearUFSStorage = 'AT+QFDEL="*"\r\n'
+    
 }
