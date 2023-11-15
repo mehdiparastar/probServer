@@ -21,7 +21,7 @@ export class ProbController {
 
   @Post('run-at-command')
   runATCommand(@Body() body: ATCommandDto) {
-    return this.probService.runATCommand(body.portNumber, body.command)
+    return this.probService.runATCommand(Number(body.portNumber), body.command)
   }
 
   @Get('port-initializing')
