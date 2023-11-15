@@ -36,8 +36,8 @@ export enum commands {
     openMTNFTPConnection = 'AT+QFTPOPEN="172.17.17.14",21\r\n',
     setMCIFTPGETCURRENTDIRECTORY = 'AT+QFTPCWD="/home/mci"\r\n',
     
-    getMCIFTPFile1 = 'AT+QFTPGET="./Upload/QuectelMSDocs.zip","UFS:QuectelMSDocs.zip"\r\n',
-    getMCIFTPFile = 'AT+QFTPGET="../amir/downloads/Autodesk.Maya.2020.4.x64.rar?1612964196","COM:test.zip"\r\n',
+    getMCIFTPFile = 'AT+QFTPGET="./Upload/QuectelMSDocs.zip","UFS:QuectelMSDocs.zip"\r\n',
+    getMCIFTPFile1 = 'AT+QFTPGET="../amir/downloads/Autodesk.Maya.2020.4.x64.rar?1612964196","COM:test.zip"\r\n',
     getMCIFTPDownloadedFileSize = 'AT+QFLST="UFS:QuectelMSDocs.zip"\r\n',
     
     getCurrentAPN = 'AT+CGDCONT?\r\n',

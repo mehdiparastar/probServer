@@ -47,7 +47,7 @@ const correctPattern = {
   'getCallStatus': /AT\+CPAS\r\r\n\+CPAS: (\d+)\r\n\r\nOK\r\n/,
   // 'AT+CPAS\r\r\n+CPAS: 4\r\n\r\nOK\r\n'
   'getCurrentAPN': /AT\+CGDCONT\?\r\r\n\+CGDCONT: (\d+),"(\w+)","(\w+)","(\d+.\d+.\d+.\d+)",.*\r\n\r\nOK\r\n/,
-  'getDataConnectivityStatus': /AT\+QIACT\?\r\r\n\+QIACT: (\d+),(\d+),(\d+),"(\w+)"\r\n/,
+  'getDataConnectivityStatus': /AT\+QIACT\?\r\r\n\+QIACT: (\d+),(\d+),(\d+),"(\d+.\d+.\d+.\d+)".*\r\n|AT\+QIACT\?\r\r\nOK\r\n/,
   'getFtpStat': /AT\+QFTPSTAT\r\r\nOK\r\n\r\n\+QFTPSTAT: 0,(\d+)\r\n/,
   'ftpGetComplete': /\r\n\+QFTPGET: 0,(\d+)\r\n/,
   'getMCIFTPDownloadedFileSize': /.*\r\n\+QFLST: "UFS:QuectelMSDocs.zip",(\d+)\r\n\r\nOK\r\n/,
@@ -58,13 +58,14 @@ const correctPattern = {
   'setMCIFTPGETCURRENTDIRECTORY': /.*\r\n\+QFTPCWD: (\d+),(\d+)\r\n/,
   // \r\n+QFTPCWD: 0,0\r\n
   'turnOffData': /AT\+QIDEACT=1\r\r\nOK\r\n/,
-  'turnOnData': /AT\+QIACT=1\r\r\nOK\r\n/,
+  'turnOnData': /AT\+QIACT=1\r\r\nOK\r\n|.*QIACT=1.*/,
   'setMCIAPN': /AT\+QICSGP=1,1,"mcinet","","",1\r\r\nOK\r\n/,
   'setFTPContext': /AT\+QFTPCFG="contextid",1\r\r\nOK\r\n/,
   'setMCIFTPAccount': /AT\+QFTPCFG="account","mci","SIM!mci2020"\r\r\nOK\r\n/,
-
-
-
+  'setFTPGETFILETYPE': /AT\+QFTPCFG="filetype",1\r\r\nOK\r\n/,
+  'setFTPGETFILETRANSFERMODE': /AT\+QFTPCFG="transmode",1\r\r\nOK\r\n/,
+  'setFTPGETTIMEOUT': /AT\+QFTPCFG="rsptimeout",90\r\r\nOK\r\n/,
+  'openMCIFTPConnection': /.*\r\n\+QFTPOPEN: (\d+),(\d+)\r\n/,
 }
 
 const cmeErrorPattern = {
@@ -410,10 +411,10 @@ const parseData = (response: string) => {
       if (key === 'getDataConnectivityStatus')
         return {
           [key]: {
-            'contextID': correctMatches[1].trim(),     // Integer type. The context ID. The range is 1-16
-            'contextState': correctMatches[2].trim(),  // Integer type. The context state. 0 Deactivated, 1 Activated
-            'contextType': correctMatches[3].trim(),   // Integer type. The protocol type. 1 IPV4, 2 IPV4V6
-            'ipAddress': correctMatches[4].trim(),     // The local IP address after the context is activated.
+            'contextID': correctMatches[1]?.trim(),     // Integer type. The context ID. The range is 1-16
+            'contextState': correctMatches[2]?.trim(),  // Integer type. The context state. 0 Deactivated, 1 Activated
+            'contextType': correctMatches[3]?.trim(),   // Integer type. The protocol type. 1 IPV4, 2 IPV4V6
+            'ipAddress': correctMatches[4]?.trim(),     // The local IP address after the context is activated.
           }
         }
       if (key === 'getFtpStat')
@@ -442,11 +443,16 @@ const parseData = (response: string) => {
       if (key === 'setMCIAPN') return { [key]: { 'status': 'OK' } }
       if (key === 'setFTPContext') return { [key]: { 'status': 'OK' } }
       if (key === 'setMCIFTPAccount') return { [key]: { 'status': 'OK' } }
-
-
-
-
-
+      if (key === 'setFTPGETFILETYPE') return { [key]: { 'status': 'OK' } }
+      if (key === 'setFTPGETFILETRANSFERMODE') return { [key]: { 'status': 'OK' } }
+      if (key === 'setFTPGETTIMEOUT') return { [key]: { 'status': 'OK' } }
+      if (key === 'openMCIFTPConnection')
+        return {
+          [key]: {
+            'err': correctMatches[1].trim(),
+            'protocolError': correctMatches[2].trim()
+          }
+        }
 
     }
   }
@@ -595,7 +601,8 @@ export class ProbService implements OnModuleInit {
       port.on('data', async (data) => {
         const response = data.toString()
         if (response !== '\r\n' && response.indexOf('GPGSA') < 0 && response.indexOf('GPRMC') < 0 && response.indexOf('GPGSV') < 0 && response.indexOf('GPVTG') < 0 && response.indexOf('GPGGA') < 0 && response.indexOf('servingcell') < 0) {
-          console.log(response)
+          // console.log(response)
+          const x = 1;
         }
         if (this.gpsEnabled) {
           if (!this.selectedGPSPort) {
@@ -1256,11 +1263,13 @@ export class ProbService implements OnModuleInit {
         }
 
         ////////////////// FTP DL ////////////////////////
+
         if (parsedResponse && parsedResponse['turnOffData']) {
           if (parsedResponse.turnOffData.status === 'OK') {
             const thisScenario = (await this.quectelsRepo.findOne({ where: { serialPortNumber: portNumber }, select: { activeScenario: true } }))?.activeScenario
             if (thisScenario && thisScenario === scenarioName.FTP_DL_TH) {
               port.write(commands.getCurrentAPN)
+              this.logger.debug('getCurrentAPN')
             }
           }
         }
@@ -1269,9 +1278,11 @@ export class ProbService implements OnModuleInit {
           if ((this.imsiDict[`ttyUSB${portNumber}`]).slice(0, 6).includes('43211')) {
             if (parsedResponse.getCurrentAPN.APNName !== 'mcinet') {
               port.write(commands.setMCIAPN)
+              this.logger.debug('setMCIAPN')
             }
             else {
               port.write(commands.getDataConnectivityStatus)
+              this.logger.debug('getDataConnectivityStatus')
             }
           }
         }
@@ -1279,22 +1290,25 @@ export class ProbService implements OnModuleInit {
         if (parsedResponse && parsedResponse['setMCIAPN']) {
           if (parsedResponse.setMCIAPN.status === 'OK') {
             port.write(commands.getDataConnectivityStatus)
+            this.logger.debug('getDataConnectivityStatus')
           }
         }
-
 
         if (parsedResponse && parsedResponse['getDataConnectivityStatus']) {
           if (parsedResponse.getDataConnectivityStatus.contextState !== '1') {
             port.write(commands.turnOnData)
+            this.logger.debug('turnOnData')
           }
           else {
             port.write(commands.setFTPContext)
+            this.logger.debug('setFTPContext')
           }
         }
 
         if (parsedResponse && parsedResponse['turnOnData']) {
           if (parsedResponse.turnOnData.status === 'OK') {
             port.write(commands.setFTPContext)
+            this.logger.debug('setFTPContext')
           }
         }
 
@@ -1302,61 +1316,92 @@ export class ProbService implements OnModuleInit {
           if (parsedResponse.setFTPContext.status === 'OK') {
             if ((this.imsiDict[`ttyUSB${portNumber}`]).slice(0, 6).includes('43211')) {
               port.write(commands.setMCIFTPAccount)
+              this.logger.debug('setMCIFTPAccount')
             }
           }
         }
 
         if (parsedResponse && parsedResponse['setMCIFTPAccount']) {
-          if (parsedResponse.turnOnData.status === 'OK') {
+          if (parsedResponse.setMCIFTPAccount.status === 'OK') {
             port.write(commands.setFTPGETFILETYPE)
+            this.logger.debug('setFTPGETFILETYPE')
           }
         }
 
-
-
-
-        if (parsedResponse && parsedResponse['setMCIFTPGETCURRENTDIRECTORY']) {
-          if (parsedResponse.setMCIFTPGETCURRENTDIRECTORY.err === '0' && parsedResponse.setMCIFTPGETCURRENTDIRECTORY.protocolError === '0') {
-            this.mciDirectorySetCorrectly = true
+        if (parsedResponse && parsedResponse['setFTPGETFILETYPE']) {
+          if (parsedResponse.setFTPGETFILETYPE.status === 'OK') {
+            port.write(commands.setFTPGETFILETRANSFERMODE)
+            this.logger.debug('setFTPGETFILETRANSFERMODE')
           }
-          else {
-            await sleep(500)
-            port.write(commands.setMCIFTPGETCURRENTDIRECTORY)
+        }
+
+        if (parsedResponse && parsedResponse['setFTPGETFILETRANSFERMODE']) {
+          if (parsedResponse.setFTPGETFILETRANSFERMODE.status === 'OK') {
+            port.write(commands.setFTPGETTIMEOUT)
+            this.logger.debug('setFTPGETTIMEOUT')
+          }
+        }
+
+        if (parsedResponse && parsedResponse['setFTPGETTIMEOUT']) {
+          if (parsedResponse.setFTPGETTIMEOUT.status === 'OK') {
+            port.write(commands.getFtpStat)
+            this.logger.debug('getFtpStat')
           }
         }
 
         if (parsedResponse && parsedResponse['getFtpStat']) {
+
           if (parsedResponse.getFtpStat.ftpStat === '4') {
             if ((this.imsiDict[`ttyUSB${portNumber}`]).slice(0, 6).includes('43211')) {
               port.write(commands.openMCIFTPConnection)
+              this.logger.debug('openMCIFTPConnection')
             }
           }
           if (parsedResponse.getFtpStat.ftpStat === '2') {
             if ((this.imsiDict[`ttyUSB${portNumber}`]).slice(0, 6).includes('43211')) {
               port.write(commands.getMCIFTPDownloadedFileSize)
-              port.write(commands.clearUFSStorage)
+              // port.write(commands.clearUFSStorage)
               this.logger.log('getting ftp file size')
             }
           }
           if (parsedResponse.getFtpStat.ftpStat === '1') {
             if ((this.imsiDict[`ttyUSB${portNumber}`]).slice(0, 6).includes('43211')) {
-              if (this.waitForFtpStatToChangeFrom1to2 === 0) {
-                this.waitForFtpStatToChangeFrom1to2 = 4
-                if (this.mciDirectorySetCorrectly) {
-                  await sleep(200)
+              // if (this.waitForFtpStatToChangeFrom1to2 === 0) {
+              //   this.waitForFtpStatToChangeFrom1to2 = 4
+              //   if (this.mciDirectorySetCorrectly) {
                   port.write(commands.getMCIFTPFile)
-                  this.logger.debug('request for ftp file sent')
+                  this.logger.debug('getMCIFTPFile')
                   this.ftpDLDFileSize = 0
                   this.ftpDLDFileTime = (new Date()).getTime()
-                }
-              }
-              else {
-                this.waitForFtpStatToChangeFrom1to2 = this.waitForFtpStatToChangeFrom1to2 - 1
-              }
+              //   }
+              // }
+              // else {
+              //   this.waitForFtpStatToChangeFrom1to2 = this.waitForFtpStatToChangeFrom1to2 - 1
+              // }
 
             }
           }
         }
+
+        if (parsedResponse && parsedResponse['openMCIFTPConnection']) {
+          if (parsedResponse.openMCIFTPConnection.err === '0') {
+            port.write(commands.setMCIFTPGETCURRENTDIRECTORY)
+            this.logger.log('setMCIFTPGETCURRENTDIRECTORY')
+          }
+        }
+
+        if (parsedResponse && parsedResponse['setMCIFTPGETCURRENTDIRECTORY']) {
+          if (parsedResponse.setMCIFTPGETCURRENTDIRECTORY.err === '0' && parsedResponse.setMCIFTPGETCURRENTDIRECTORY.protocolError === '0') {
+            this.mciDirectorySetCorrectly = true
+            port.write(commands.getFtpStat)
+            this.logger.log('getFtpStat')
+          }
+          else {
+            port.write(commands.setMCIFTPGETCURRENTDIRECTORY)
+          }
+        }
+
+
         if (parsedResponse && parsedResponse['ftpGetComplete']) {
           const speed = (Number(parsedResponse.ftpGetComplete.transferlen) - this.ftpDLDFileSize) / ((new Date()).getTime() - this.ftpDLDFileTime)
           this.logger.log(`FTP DL Speed: ${speed} KB/s`)
@@ -1642,41 +1687,43 @@ export class ProbService implements OnModuleInit {
                   //   break;
 
 
-                  // case scenarioName.FTP_DL_TH:
-                  //   this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.clearUFSStorage)
-                  //   await sleep(1000)
-                  //   this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.allTech,
-                  //     async () => {
-                  //       await sleep(2000)
-                  //       this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getCurrentAPN)
-                  //       await sleep(2000)
-                  //       this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getDataConnectivityStatus)
-                  //       await sleep(2000)
+                  case scenarioName.FTP_DL_TH:
+                    this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.clearUFSStorage)
+                    await sleep(1000)
+                    this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.allTech,
+                      async () => {
+                        await sleep(4000)
+                        this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.turnOffData)
+                        // await sleep(2000)
+                        // this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getCurrentAPN)
+                        // await sleep(2000)
+                        // this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getDataConnectivityStatus)
+                        // await sleep(2000)
 
-                  //       this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.setFTPContext)
-                  //       await sleep(500)
-                  //       if (this.imsiDict[`ttyUSB${module.serialPortNumber}`].slice(0, 6).includes('43211')) {
-                  //         this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.setMCIFTPAccount)
-                  //       }
-                  //       await sleep(500)
-                  //       this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.setFTPGETFILETYPE)
-                  //       await sleep(500)
-                  //       this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.setFTPGETFILETRANSFERMODE)
-                  //       await sleep(500)
-                  //       this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.setFTPGETTIMEOUT)
-                  //       await sleep(500)
-                  //       this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.openMCIFTPConnection)
-                  //       await sleep(2000)
-                  //       this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.setMCIFTPGETCURRENTDIRECTORY)
-                  //       await sleep(2000)
-                  //       setInterval(
-                  //         async () => {
-                  //           this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getFtpStat)
-                  //         }, 1000
-                  //       )
-                  //     })
+                        // this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.setFTPContext)
+                        // await sleep(500)
+                        // if (this.imsiDict[`ttyUSB${module.serialPortNumber}`].slice(0, 6).includes('43211')) {
+                        //   this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.setMCIFTPAccount)
+                        // }
+                        // await sleep(500)
+                        // this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.setFTPGETFILETYPE)
+                        // await sleep(500)
+                        // this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.setFTPGETFILETRANSFERMODE)
+                        // await sleep(500)
+                        // this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.setFTPGETTIMEOUT)
+                        // await sleep(500)
+                        // this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.openMCIFTPConnection)
+                        // await sleep(2000)
+                        // this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.setMCIFTPGETCURRENTDIRECTORY)
+                        // await sleep(2000)
+                        // setInterval(
+                        //   async () => {
+                        //     this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getFtpStat)
+                        //   }, 1000
+                        // )
+                      })
 
-                  //   break;
+                    break;
 
                   default:
                     break;
