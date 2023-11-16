@@ -552,6 +552,7 @@ export class ProbService implements OnModuleInit {
   private ftpDLDFileTime: number
   private waitForFtpStatToChangeFrom1to2: number = 2;
   private mciDirectorySetCorrectly: boolean = false
+  private stop: boolean = false
 
   constructor(
     @InjectRepository(User) private usersRepo: Repository<User>,
@@ -601,8 +602,11 @@ export class ProbService implements OnModuleInit {
       port.on('data', async (data) => {
         const response = data.toString()
         if (response !== '\r\n' && response.indexOf('GPGSA') < 0 && response.indexOf('GPRMC') < 0 && response.indexOf('GPGSV') < 0 && response.indexOf('GPVTG') < 0 && response.indexOf('GPGGA') < 0 && response.indexOf('servingcell') < 0) {
-          // console.log(response)
-          const x = 1;
+          if (this.stop) {
+            this.logger.log(`###${response}###`)
+            const x = 1;
+            this.stop = false
+          }
         }
         if (this.gpsEnabled) {
           if (!this.selectedGPSPort) {
@@ -651,7 +655,7 @@ export class ProbService implements OnModuleInit {
         }
 
         const parsedResponse = parseData(response)
-
+        // #region other events
         if (parsedResponse && parsedResponse['moduleInformation']) {
           if (parsedResponse['moduleInformation']['cmeErrorCode']) {
             const entry = await this.quectelsRepo.upsert(
@@ -1261,7 +1265,7 @@ export class ProbService implements OnModuleInit {
             }
           }
         }
-
+        // #endregion
         ////////////////// FTP DL ////////////////////////
 
         if (parsedResponse && parsedResponse['turnOffData']) {
@@ -1270,13 +1274,19 @@ export class ProbService implements OnModuleInit {
             if (thisScenario && thisScenario === scenarioName.FTP_DL_TH) {
               port.write(commands.getCurrentAPN)
               this.logger.debug('getCurrentAPN')
+              this.stop = true
             }
           }
         }
 
-        if (parsedResponse && parsedResponse['getCurrentAPN']) {
+        if (this.stop && response === 'AT+CGDCONT?') {
+          port.write(commands.getCurrentAPN)
+          this.logger.debug('retry for getCurrentAPN')
+        }
+
+        if ((parsedResponse && parsedResponse['getCurrentAPN'])) {
           if ((this.imsiDict[`ttyUSB${portNumber}`]).slice(0, 6).includes('43211')) {
-            if (parsedResponse.getCurrentAPN.APNName !== 'mcinet') {
+            if (parsedResponse.getCurrentAPN && parsedResponse.getCurrentAPN.APNName !== 'mcinet') {
               port.write(commands.setMCIAPN)
               this.logger.debug('setMCIAPN')
             }
@@ -1309,7 +1319,13 @@ export class ProbService implements OnModuleInit {
           if (parsedResponse.turnOnData.status === 'OK') {
             port.write(commands.setFTPContext)
             this.logger.debug('setFTPContext')
+            this.stop = true
           }
+        }
+
+        if (this.stop && response === 'OK') {
+          port.write(commands.setFTPContext)
+          this.logger.debug('retry for setFTPContext')
         }
 
         if (parsedResponse && parsedResponse['setFTPContext']) {
@@ -1369,10 +1385,10 @@ export class ProbService implements OnModuleInit {
               // if (this.waitForFtpStatToChangeFrom1to2 === 0) {
               //   this.waitForFtpStatToChangeFrom1to2 = 4
               //   if (this.mciDirectorySetCorrectly) {
-                  port.write(commands.getMCIFTPFile)
-                  this.logger.debug('getMCIFTPFile')
-                  this.ftpDLDFileSize = 0
-                  this.ftpDLDFileTime = (new Date()).getTime()
+              port.write(commands.getMCIFTPFile)
+              this.logger.debug('getMCIFTPFile')
+              this.ftpDLDFileSize = 0
+              this.ftpDLDFileTime = (new Date()).getTime()
               //   }
               // }
               // else {
@@ -1574,6 +1590,7 @@ export class ProbService implements OnModuleInit {
               for (const module of allEntries) {
                 switch (module.activeScenario) {
 
+                  // #region other scenarios
                   // case scenarioName.GSMIdle:
                   //   this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.lockGSM, async (err) => {
                   //     if (!err) {
@@ -1685,7 +1702,7 @@ export class ProbService implements OnModuleInit {
                   //     }
                   //   })
                   //   break;
-
+                  //#endregion
 
                   case scenarioName.FTP_DL_TH:
                     this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.clearUFSStorage)
@@ -1694,6 +1711,7 @@ export class ProbService implements OnModuleInit {
                       async () => {
                         await sleep(4000)
                         this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.turnOffData)
+                        // #region alternative
                         // await sleep(2000)
                         // this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getCurrentAPN)
                         // await sleep(2000)
@@ -1721,6 +1739,7 @@ export class ProbService implements OnModuleInit {
                         //     this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getFtpStat)
                         //   }, 1000
                         // )
+                        //#endregion
                       })
 
                     break;
