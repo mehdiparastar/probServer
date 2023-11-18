@@ -46,14 +46,14 @@ const correctPattern = {
   // AT+QENG="servingcell";\r\r\n+QENG: "servingcell","NOCONN","LTE","FDD",432,35,1E77017,456,2850,7,5,5,584E,-100,-17,-62,-1,23\r\n\r\nOK\r\n
   'getCallStatus': /AT\+CPAS\r\r\n\+CPAS: (\d+)\r\n\r\nOK\r\n/,
   // 'AT+CPAS\r\r\n+CPAS: 4\r\n\r\nOK\r\n'
-  'getCurrentAPN': /AT\+CGDCONT\?\r\r\n\+CGDCONT: (\d+),"(\w+)","(\w+)","(\d+.\d+.\d+.\d+)",.*\r\n\r\nOK\r\n/,
+  'getCurrentAPN': /AT\+CGDCONT\?\r\r\n\+CGDCONT: (\d+),"(\w+)","(\w+)","(\d+.\d+.\d+.\d+)",.*\r\n\r\nOK\r\n|.*\+CGDCONT: (\d+),"(\w+)","(\w+)","(\d+.\d+.\d+.\d+)",.*/,
   'getDataConnectivityStatus': /AT\+QIACT\?\r\r\n\+QIACT: (\d+),(\d+),(\d+),"(\d+.\d+.\d+.\d+)".*\r\n|AT\+QIACT\?\r\r\nOK\r\n/,
   'getFtpStat': /AT\+QFTPSTAT\r\r\nOK\r\n\r\n\+QFTPSTAT: 0,(\d+)\r\n/,
   'ftpGetComplete': /\r\n\+QFTPGET: 0,(\d+)\r\n/,
   'getMCIFTPDownloadedFileSize': /.*\r\n\+QFLST: "UFS:QuectelMSDocs.zip",(\d+)\r\n\r\nOK\r\n/,
   // 'AT+QFLST="UFS:QuectelMSDocs.zip"\r\r\n+QFLST: "UFS:QuectelMSDocs.zip",57897070\r\n\r\nOK\r\n'
   // \r\n+QFLST: "UFS:QuectelMSDocs.zip",57897070\r\n\r\nOK\r\n
-  'getMCIFTPFile': /AT\+QFTPGET=".\/Upload\/QuectelMSDocs.zip","UFS:QuectelMSDocs.zip"\r\r\nOK\r\n/,
+  // 'getMCIFTPFile': /AT\+QFTPGET=".\/Upload\/QuectelMSDocs.zip","UFS:QuectelMSDocs.zip"\r\r\nOK\r\n/,
   //AT+QFTPGET="./Upload/QuectelMSDocs.zip","UFS:QuectelMSDocs.zip"\r\r\n+CME ERROR: 603\r\n
   'setMCIFTPGETCURRENTDIRECTORY': /.*\r\n\+QFTPCWD: (\d+),(\d+)\r\n/,
   // \r\n+QFTPCWD: 0,0\r\n
@@ -66,6 +66,7 @@ const correctPattern = {
   'setFTPGETFILETRANSFERMODE': /AT\+QFTPCFG="transmode",1\r\r\nOK\r\n/,
   'setFTPGETTIMEOUT': /AT\+QFTPCFG="rsptimeout",90\r\r\nOK\r\n/,
   'openMCIFTPConnection': /.*\r\n\+QFTPOPEN: (\d+),(\d+)\r\n/,
+  'getMCIFTPFile': /.*QFTPGET=.*Upload.*QuectelMSDocs.zip.*"UFS:QuectelMSDocs.zip.*/
 }
 
 const cmeErrorPattern = {
@@ -297,230 +298,6 @@ const sleep = async (milisecond: number) => {
   await new Promise(resolve => setTimeout(resolve, milisecond))
 }
 
-const parseData = (response: string) => {
-  // if (response.substring(0, 8) === 'AT+CPIN?') {
-  // if (response.match(/ATI\r\r\n\+CME ERROR: (\d+)\r\n/)) {
-  // if (response.indexOf('nwscanmode') >= 0 && response.indexOf('ERROR') < 0) {
-  // if (response.indexOf('nwscanmode') >= 0) {
-  // if (response.indexOf('CPAS') >= 0) {
-  //   const stop = true
-  // }
-
-  const correctKeys = Object.keys(correctPattern)
-  for (const key of correctKeys) {
-
-    const correctMatches = response.match(correctPattern[key])
-    if (correctMatches !== null) {
-      if (key === 'moduleInformation')
-        return {
-          [key]: {
-            'modelName': correctMatches[1].trim(),  // Extracted model name
-            'revision': correctMatches[2].trim()    // Extracted revision
-          }
-        }
-      if (key === 'moduleIMSI') return { [key]: { 'IMSI': correctMatches[1].trim() } }
-      if (key === 'moduleIMEI') return { [key]: { 'IMEI': correctMatches[1].trim() } }
-      if (key === 'simStatus') return { [key]: { 'status': correctMatches[1].trim() } }
-      if (key === 'enableGPS') return { [key]: { 'status': 'OK' } }
-      if (key === 'isGPSActive') return { [key]: { 'status': 'OK' } }
-      if (key === 'lockGSM') return { [key]: { 'status': 'GSM_LOCK_OK' } }
-      if (key === 'getGSMNetworkParameters')
-        return {
-          [key]: {
-            'tech': correctMatches[2].trim(),
-            'mcc': correctMatches[3].trim(),
-            'mnc': correctMatches[4].trim(),
-            'lac': correctMatches[5].trim(),
-            'cellid': correctMatches[6].trim(),
-            'bsic': correctMatches[7].trim(),
-            'arfcn': correctMatches[8].trim(),
-            'bandgsm': correctMatches[9].trim(),
-            'rxlev': correctMatches[10].trim(),
-            'txp': correctMatches[11].trim(),
-            'tla': correctMatches[12].trim(),
-            'drx': correctMatches[13].trim(),
-            'c1': correctMatches[14].trim(),
-            'c2': correctMatches[15].trim(),
-            'gprs': correctMatches[16].trim(),
-            'tch': correctMatches[17].trim(),
-            'ts': correctMatches[18].trim(),
-            'ta': correctMatches[19].trim(),
-            'maio': correctMatches[20].trim(),
-            'hsn': correctMatches[21].trim(),
-            'rxlevsub': correctMatches[22].trim(),
-            'rxlevfull': correctMatches[23].trim(),
-            'rxqualsub': correctMatches[24].trim(),
-            'rxqualfull': correctMatches[25].trim(),
-            'voicecodec': correctMatches[26].trim(),
-          }
-        }
-      if (key === 'lockWCDMA') return { [key]: { 'status': 'WCDMA_LOCK_OK' } }
-      if (key === 'getWCDMANetworkParameters')
-        return {
-          [key]: {
-            'tech': correctMatches[2].trim(),
-            'mcc': correctMatches[3].trim(),
-            'mnc': correctMatches[4].trim(),
-            'lac': correctMatches[5].trim(),
-            'cellid': correctMatches[6].trim(),
-            'uarfcn': correctMatches[7].trim(),
-            'psc': correctMatches[8].trim(),
-            'rac': correctMatches[9].trim(),
-            'rscp': correctMatches[10].trim(),
-            'ecio': correctMatches[11].trim(),
-            'phych': correctMatches[12].trim(),
-            'sf': correctMatches[13].trim(),
-            'slot': correctMatches[14].trim(),
-            'speech_code': correctMatches[15].trim(),
-            'comMod': correctMatches[16].trim(),
-          }
-        }
-      if (key === 'lockLTE') return { [key]: { 'status': 'LTE_LOCK_OK' } }
-      if (key === 'getLTENetworkParameters')
-        return {//"is_tdd","mcc","mnc","cellid","pcid","earfcn","freq_band_ind","ul_bandwidth","dl_bandwidth","tac","rsrp","rsrq","rssi","sinr","srxlev"
-          [key]: {
-            'tech': correctMatches[2].trim(),
-            'is_tdd': correctMatches[3].trim(),
-            'mcc': correctMatches[4].trim(),
-            'mnc': correctMatches[5].trim(),
-            'cellid': correctMatches[6].trim(),
-            'pcid': correctMatches[7].trim(),
-            'earfcn': correctMatches[8].trim(),
-            'freq_band_ind': correctMatches[9].trim(),
-            'ul_bandwidth': correctMatches[10].trim(),
-            'dl_bandwidth': correctMatches[11].trim(),
-            'tac': correctMatches[12].trim(),
-            'rsrp': correctMatches[13].trim(),
-            'rsrq': correctMatches[14].trim(),
-            'rssi': correctMatches[15].trim(),
-            'sinr': correctMatches[16].trim(),
-            'srxlev': correctMatches[17].trim(),
-          }
-        }
-      if (key === 'allTech') return { [key]: { 'status': 'ALL_TECH_OK' } }
-      if (key === 'getCallStatus') return { [key]: { 'status': correctMatches[1].trim() } }
-      if (key === 'getCurrentAPN')
-        return {
-          [key]: {
-            'cid': correctMatches[1].trim(),
-            'PDPType': correctMatches[2].trim(),
-            'APNName': correctMatches[3].trim(),
-            'PDPAdd': correctMatches[4].trim(),
-          }
-        }
-      if (key === 'getDataConnectivityStatus')
-        return {
-          [key]: {
-            'contextID': correctMatches[1]?.trim(),     // Integer type. The context ID. The range is 1-16
-            'contextState': correctMatches[2]?.trim(),  // Integer type. The context state. 0 Deactivated, 1 Activated
-            'contextType': correctMatches[3]?.trim(),   // Integer type. The protocol type. 1 IPV4, 2 IPV4V6
-            'ipAddress': correctMatches[4]?.trim(),     // The local IP address after the context is activated.
-          }
-        }
-      if (key === 'getFtpStat')
-        return {
-          [key]: {
-            'ftpStat': correctMatches[1].trim(),
-            // The current status of FTP(S) server
-            //   0 Opening an FTP(S) server
-            //   1 The FTP(S) server is opened and idle
-            //   2 Transferring data with FTP(S) server
-            //   3 Closing the FTP(S) server
-            //   4 The FTP(S) server is closed
-          }
-        }
-      if (key === 'ftpGetComplete') return { [key]: { 'transferlen': correctMatches[1].trim() } }
-      if (key === 'getMCIFTPDownloadedFileSize') return { [key]: { 'transferlen': correctMatches[1].trim() } }
-      if (key === 'setMCIFTPGETCURRENTDIRECTORY')
-        return {
-          [key]: {
-            'err': correctMatches[1].trim(),
-            'protocolError': correctMatches[2].trim()
-          }
-        }
-      if (key === 'turnOffData') return { [key]: { 'status': 'OK' } }
-      if (key === 'turnOnData') return { [key]: { 'status': 'OK' } }
-      if (key === 'setMCIAPN') return { [key]: { 'status': 'OK' } }
-      if (key === 'setFTPContext') return { [key]: { 'status': 'OK' } }
-      if (key === 'setMCIFTPAccount') return { [key]: { 'status': 'OK' } }
-      if (key === 'setFTPGETFILETYPE') return { [key]: { 'status': 'OK' } }
-      if (key === 'setFTPGETFILETRANSFERMODE') return { [key]: { 'status': 'OK' } }
-      if (key === 'setFTPGETTIMEOUT') return { [key]: { 'status': 'OK' } }
-      if (key === 'openMCIFTPConnection')
-        return {
-          [key]: {
-            'err': correctMatches[1].trim(),
-            'protocolError': correctMatches[2].trim()
-          }
-        }
-
-    }
-  }
-
-  const cmeErrorKeys = Object.keys(cmeErrorPattern)
-  for (const key of cmeErrorKeys) {
-    const errorMatches = response.match(cmeErrorPattern[key])
-
-    if (errorMatches !== null) {
-      if (key === 'moduleInformation') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
-      if (key === 'moduleIMSI') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
-      if (key === 'moduleIMEI') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
-      if (key === 'simStatus') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
-      if (key === 'enableGPS') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
-      if (key === 'isGPSActive') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
-      if (key === 'lockGSM') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
-      if (key === 'getGSMNetworkParameters') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
-      if (key === 'lockWCDMA') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
-      if (key === 'getWCDMANetworkParameters') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
-      if (key === 'lockLTE') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
-      if (key === 'getLTENetworkParameters') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
-      if (key === 'allTech') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
-      if (key === 'getCallStatus') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
-      if (key === 'getCurrentAPN') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
-      if (key === 'getDataConnectivityStatus') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
-      if (key === 'getFtpStat') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
-      if (key === 'getMCIFTPFile') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
-    }
-  }
-
-  const cmsErrorKeys = Object.keys(cmsErrorPattern)
-  for (const key of cmsErrorKeys) {
-    const errorMatches = response.match(cmsErrorPattern[key])
-
-    if (errorMatches !== null) {
-      if (key === 'moduleInformation') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
-      if (key === 'moduleIMSI') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
-      if (key === 'moduleIMEI') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
-      if (key === 'simStatus') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
-      if (key === 'enableGPS') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
-      if (key === 'isGPSActive') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
-      if (key === 'lockGSM') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
-      if (key === 'getGSMNetworkParameters') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
-      if (key === 'lockWCDMA') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
-      if (key === 'getWCDMANetworkParameters') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
-      if (key === 'lockLTE') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
-      if (key === 'getLTENetworkParameters') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
-      if (key === 'allTech') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
-      if (key === 'getCallStatus') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
-      if (key === 'getCurrentAPN') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
-      if (key === 'getDataConnectivityStatus') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
-      if (key === 'getFtpStat') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
-      if (key === 'getMCIFTPFile') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
-    }
-  }
-
-  // if itration tasks dont captured up to now : temprorarly until all tech regex added
-  if (response.indexOf('servingcell') >= 0 && response.indexOf('GPGSA') < 0) {
-    return {
-      ['getGSMNetworkParameters']: { 'cmeErrorCode': 'temprorarly until all tech regex added' },
-      ['getWCDMANetworkParameters']: { 'cmeErrorCode': 'temprorarly until all tech regex added' },
-      ['getLTENetworkParameters']: { 'cmeErrorCode': 'temprorarly until all tech regex added' },
-    }
-  }
-
-  return false
-}
-
 const makeCallCommand = (imsi: string) => {
   if (imsi.slice(0, 6).includes('43211')) {
     return commands.callMCI
@@ -552,7 +329,7 @@ export class ProbService implements OnModuleInit {
   private ftpDLDFileTime: number
   private waitForFtpStatToChangeFrom1to2: number = 2;
   private mciDirectorySetCorrectly: boolean = false
-  private stop: boolean = false
+  private ftpDLIntervalID: { [key: string]: boolean } = {} //{'interval_NodeJS.Timeout:true}
 
   constructor(
     @InjectRepository(User) private usersRepo: Repository<User>,
@@ -568,6 +345,231 @@ export class ProbService implements OnModuleInit {
   ) {
 
     this.allPortsInitializing()
+  }
+
+  parseData(response: string) {
+    // if (response.substring(0, 8) === 'AT+CPIN?') {
+    // if (response.match(/ATI\r\r\n\+CME ERROR: (\d+)\r\n/)) {
+    // if (response.indexOf('nwscanmode') >= 0 && response.indexOf('ERROR') < 0) {
+    // if (response.indexOf('nwscanmode') >= 0) {
+    // if (response.indexOf('CPAS') >= 0) {
+    //   const stop = true
+    // }
+
+    const correctKeys = Object.keys(correctPattern)
+    for (const key of correctKeys) {
+
+      const correctMatches = response.match(correctPattern[key])
+      if (correctMatches !== null) {
+        if (key === 'moduleInformation')
+          return {
+            [key]: {
+              'modelName': correctMatches[1].trim(),  // Extracted model name
+              'revision': correctMatches[2].trim()    // Extracted revision
+            }
+          }
+        if (key === 'moduleIMSI') return { [key]: { 'IMSI': correctMatches[1].trim() } }
+        if (key === 'moduleIMEI') return { [key]: { 'IMEI': correctMatches[1].trim() } }
+        if (key === 'simStatus') return { [key]: { 'status': correctMatches[1].trim() } }
+        if (key === 'enableGPS') return { [key]: { 'status': 'OK' } }
+        if (key === 'isGPSActive') return { [key]: { 'status': 'OK' } }
+        if (key === 'lockGSM') return { [key]: { 'status': 'GSM_LOCK_OK' } }
+        if (key === 'getGSMNetworkParameters')
+          return {
+            [key]: {
+              'tech': correctMatches[2].trim(),
+              'mcc': correctMatches[3].trim(),
+              'mnc': correctMatches[4].trim(),
+              'lac': correctMatches[5].trim(),
+              'cellid': correctMatches[6].trim(),
+              'bsic': correctMatches[7].trim(),
+              'arfcn': correctMatches[8].trim(),
+              'bandgsm': correctMatches[9].trim(),
+              'rxlev': correctMatches[10].trim(),
+              'txp': correctMatches[11].trim(),
+              'tla': correctMatches[12].trim(),
+              'drx': correctMatches[13].trim(),
+              'c1': correctMatches[14].trim(),
+              'c2': correctMatches[15].trim(),
+              'gprs': correctMatches[16].trim(),
+              'tch': correctMatches[17].trim(),
+              'ts': correctMatches[18].trim(),
+              'ta': correctMatches[19].trim(),
+              'maio': correctMatches[20].trim(),
+              'hsn': correctMatches[21].trim(),
+              'rxlevsub': correctMatches[22].trim(),
+              'rxlevfull': correctMatches[23].trim(),
+              'rxqualsub': correctMatches[24].trim(),
+              'rxqualfull': correctMatches[25].trim(),
+              'voicecodec': correctMatches[26].trim(),
+            }
+          }
+        if (key === 'lockWCDMA') return { [key]: { 'status': 'WCDMA_LOCK_OK' } }
+        if (key === 'getWCDMANetworkParameters')
+          return {
+            [key]: {
+              'tech': correctMatches[2].trim(),
+              'mcc': correctMatches[3].trim(),
+              'mnc': correctMatches[4].trim(),
+              'lac': correctMatches[5].trim(),
+              'cellid': correctMatches[6].trim(),
+              'uarfcn': correctMatches[7].trim(),
+              'psc': correctMatches[8].trim(),
+              'rac': correctMatches[9].trim(),
+              'rscp': correctMatches[10].trim(),
+              'ecio': correctMatches[11].trim(),
+              'phych': correctMatches[12].trim(),
+              'sf': correctMatches[13].trim(),
+              'slot': correctMatches[14].trim(),
+              'speech_code': correctMatches[15].trim(),
+              'comMod': correctMatches[16].trim(),
+            }
+          }
+        if (key === 'lockLTE') return { [key]: { 'status': 'LTE_LOCK_OK' } }
+        if (key === 'getLTENetworkParameters')
+          return {//"is_tdd","mcc","mnc","cellid","pcid","earfcn","freq_band_ind","ul_bandwidth","dl_bandwidth","tac","rsrp","rsrq","rssi","sinr","srxlev"
+            [key]: {
+              'tech': correctMatches[2].trim(),
+              'is_tdd': correctMatches[3].trim(),
+              'mcc': correctMatches[4].trim(),
+              'mnc': correctMatches[5].trim(),
+              'cellid': correctMatches[6].trim(),
+              'pcid': correctMatches[7].trim(),
+              'earfcn': correctMatches[8].trim(),
+              'freq_band_ind': correctMatches[9].trim(),
+              'ul_bandwidth': correctMatches[10].trim(),
+              'dl_bandwidth': correctMatches[11].trim(),
+              'tac': correctMatches[12].trim(),
+              'rsrp': correctMatches[13].trim(),
+              'rsrq': correctMatches[14].trim(),
+              'rssi': correctMatches[15].trim(),
+              'sinr': correctMatches[16].trim(),
+              'srxlev': correctMatches[17].trim(),
+            }
+          }
+        if (key === 'allTech') return { [key]: { 'status': 'ALL_TECH_OK' } }
+        if (key === 'getCallStatus') return { [key]: { 'status': correctMatches[1].trim() } }
+        if (key === 'getCurrentAPN') {
+          return {
+            [key]: {
+              'cid': correctMatches[1] ? correctMatches[1].trim() : correctMatches[5].trim(),
+              'PDPType': correctMatches[2] ? correctMatches[2].trim() : correctMatches[6].trim(),
+              'APNName': correctMatches[3] ? correctMatches[3].trim() : correctMatches[7].trim(),
+              'PDPAdd': correctMatches[4] ? correctMatches[4].trim() : correctMatches[8].trim(),
+            }
+          }
+        }
+        if (key === 'getDataConnectivityStatus')
+          return {
+            [key]: {
+              'contextID': correctMatches[1]?.trim(),     // Integer type. The context ID. The range is 1-16
+              'contextState': correctMatches[2]?.trim(),  // Integer type. The context state. 0 Deactivated, 1 Activated
+              'contextType': correctMatches[3]?.trim(),   // Integer type. The protocol type. 1 IPV4, 2 IPV4V6
+              'ipAddress': correctMatches[4]?.trim(),     // The local IP address after the context is activated.
+            }
+          }
+        if (key === 'getFtpStat')
+          return {
+            [key]: {
+              'ftpStat': correctMatches[1].trim(),
+              // The current status of FTP(S) server
+              //   0 Opening an FTP(S) server
+              //   1 The FTP(S) server is opened and idle
+              //   2 Transferring data with FTP(S) server
+              //   3 Closing the FTP(S) server
+              //   4 The FTP(S) server is closed
+            }
+          }
+        if (key === 'ftpGetComplete') return { [key]: { 'transferlen': correctMatches[1].trim() } }
+        if (key === 'getMCIFTPDownloadedFileSize') return { [key]: { 'transferlen': correctMatches[1].trim() } }
+        if (key === 'setMCIFTPGETCURRENTDIRECTORY')
+          return {
+            [key]: {
+              'err': correctMatches[1].trim(),
+              'protocolError': correctMatches[2].trim()
+            }
+          }
+        if (key === 'turnOffData') return { [key]: { 'status': 'OK' } }
+        if (key === 'turnOnData') return { [key]: { 'status': 'OK' } }
+        if (key === 'setMCIAPN') return { [key]: { 'status': 'OK' } }
+        if (key === 'setFTPContext') return { [key]: { 'status': 'OK' } }
+        if (key === 'setMCIFTPAccount') return { [key]: { 'status': 'OK' } }
+        if (key === 'setFTPGETFILETYPE') return { [key]: { 'status': 'OK' } }
+        if (key === 'setFTPGETFILETRANSFERMODE') return { [key]: { 'status': 'OK' } }
+        if (key === 'setFTPGETTIMEOUT') return { [key]: { 'status': 'OK' } }
+        if (key === 'openMCIFTPConnection')
+          return {
+            [key]: {
+              'err': correctMatches[1].trim(),
+              'protocolError': correctMatches[2].trim()
+            }
+          }
+        if (key === 'getMCIFTPFile') return { [key]: { 'status': 'OK' } }
+      }
+    }
+
+    const cmeErrorKeys = Object.keys(cmeErrorPattern)
+    for (const key of cmeErrorKeys) {
+      const errorMatches = response.match(cmeErrorPattern[key])
+
+      if (errorMatches !== null) {
+        if (key === 'moduleInformation') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
+        if (key === 'moduleIMSI') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
+        if (key === 'moduleIMEI') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
+        if (key === 'simStatus') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
+        if (key === 'enableGPS') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
+        if (key === 'isGPSActive') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
+        if (key === 'lockGSM') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
+        if (key === 'getGSMNetworkParameters') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
+        if (key === 'lockWCDMA') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
+        if (key === 'getWCDMANetworkParameters') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
+        if (key === 'lockLTE') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
+        if (key === 'getLTENetworkParameters') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
+        if (key === 'allTech') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
+        if (key === 'getCallStatus') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
+        if (key === 'getCurrentAPN') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
+        if (key === 'getDataConnectivityStatus') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
+        if (key === 'getFtpStat') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
+        if (key === 'getMCIFTPFile') return { [key]: { 'cmeErrorCode': errorMatches[1].trim() } }
+      }
+    }
+
+    const cmsErrorKeys = Object.keys(cmsErrorPattern)
+    for (const key of cmsErrorKeys) {
+      const errorMatches = response.match(cmsErrorPattern[key])
+
+      if (errorMatches !== null) {
+        if (key === 'moduleInformation') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+        if (key === 'moduleIMSI') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+        if (key === 'moduleIMEI') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+        if (key === 'simStatus') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+        if (key === 'enableGPS') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+        if (key === 'isGPSActive') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+        if (key === 'lockGSM') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+        if (key === 'getGSMNetworkParameters') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+        if (key === 'lockWCDMA') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+        if (key === 'getWCDMANetworkParameters') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+        if (key === 'lockLTE') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+        if (key === 'getLTENetworkParameters') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+        if (key === 'allTech') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+        if (key === 'getCallStatus') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+        if (key === 'getCurrentAPN') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+        if (key === 'getDataConnectivityStatus') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+        if (key === 'getFtpStat') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+        if (key === 'getMCIFTPFile') return { [key]: { 'cmsErrorCode': errorMatches[1].trim() } }
+      }
+    }
+
+    // if itration tasks dont captured up to now : temprorarly until all tech regex added
+    if (response.indexOf('servingcell') >= 0 && response.indexOf('GPGSA') < 0) {
+      return {
+        ['getGSMNetworkParameters']: { 'cmeErrorCode': 'temprorarly until all tech regex added' },
+        ['getWCDMANetworkParameters']: { 'cmeErrorCode': 'temprorarly until all tech regex added' },
+        ['getLTENetworkParameters']: { 'cmeErrorCode': 'temprorarly until all tech regex added' },
+      }
+    }
+
+    return false
   }
 
   async onModuleInit() {
@@ -602,11 +604,7 @@ export class ProbService implements OnModuleInit {
       port.on('data', async (data) => {
         const response = data.toString()
         if (response !== '\r\n' && response.indexOf('GPGSA') < 0 && response.indexOf('GPRMC') < 0 && response.indexOf('GPGSV') < 0 && response.indexOf('GPVTG') < 0 && response.indexOf('GPGGA') < 0 && response.indexOf('servingcell') < 0) {
-          if (this.stop) {
-            this.logger.log(`###${response}###`)
-            const x = 1;
-            this.stop = false
-          }
+          this.logger.log(JSON.stringify(response))
         }
         if (this.gpsEnabled) {
           if (!this.selectedGPSPort) {
@@ -637,24 +635,24 @@ export class ProbService implements OnModuleInit {
               const rmcData = parseRMC(response);
               const gpsTime = ggaData.time || rmcData.time
               if (gpsTime && gpsTime !== '' && this.logStarted) {
-                const gpsData = this.gpsDataRepo.upsert({
-                  gpsTime: gpsTime,
-                  latitude: ggaData.latitude || rmcData.latitude,
-                  longitude: ggaData.longitude || rmcData.longitude,
-                  altitude: ggaData.altitude,
-                  groundSpeed: rmcData.groundSpeed,
-                },
-                  {
-                    conflictPaths: ['gpsTime'],
-                    skipUpdateIfNoValuesChanged: true
-                  }
-                )
+                // const gpsData = this.gpsDataRepo.upsert({
+                //   gpsTime: gpsTime,
+                //   latitude: ggaData.latitude || rmcData.latitude,
+                //   longitude: ggaData.longitude || rmcData.longitude,
+                //   altitude: ggaData.altitude,
+                //   groundSpeed: rmcData.groundSpeed,
+                // },
+                //   {
+                //     conflictPaths: ['gpsTime'],
+                //     skipUpdateIfNoValuesChanged: true
+                //   }
+                // )
               }
             }
           }
         }
 
-        const parsedResponse = parseData(response)
+        const parsedResponse = this.parseData(response)
         // #region other events
         if (parsedResponse && parsedResponse['moduleInformation']) {
           if (parsedResponse['moduleInformation']['cmeErrorCode']) {
@@ -1272,25 +1270,22 @@ export class ProbService implements OnModuleInit {
           if (parsedResponse.turnOffData.status === 'OK') {
             const thisScenario = (await this.quectelsRepo.findOne({ where: { serialPortNumber: portNumber }, select: { activeScenario: true } }))?.activeScenario
             if (thisScenario && thisScenario === scenarioName.FTP_DL_TH) {
+              await sleep(300)
               port.write(commands.getCurrentAPN)
               this.logger.debug('getCurrentAPN')
-              this.stop = true
             }
           }
-        }
-
-        if (this.stop && response === 'AT+CGDCONT?') {
-          port.write(commands.getCurrentAPN)
-          this.logger.debug('retry for getCurrentAPN')
         }
 
         if ((parsedResponse && parsedResponse['getCurrentAPN'])) {
           if ((this.imsiDict[`ttyUSB${portNumber}`]).slice(0, 6).includes('43211')) {
             if (parsedResponse.getCurrentAPN && parsedResponse.getCurrentAPN.APNName !== 'mcinet') {
+              await sleep(300)
               port.write(commands.setMCIAPN)
               this.logger.debug('setMCIAPN')
             }
             else {
+              await sleep(300)
               port.write(commands.getDataConnectivityStatus)
               this.logger.debug('getDataConnectivityStatus')
             }
@@ -1299,6 +1294,7 @@ export class ProbService implements OnModuleInit {
 
         if (parsedResponse && parsedResponse['setMCIAPN']) {
           if (parsedResponse.setMCIAPN.status === 'OK') {
+            await sleep(300)
             port.write(commands.getDataConnectivityStatus)
             this.logger.debug('getDataConnectivityStatus')
           }
@@ -1306,75 +1302,100 @@ export class ProbService implements OnModuleInit {
 
         if (parsedResponse && parsedResponse['getDataConnectivityStatus']) {
           if (parsedResponse.getDataConnectivityStatus.contextState !== '1') {
+            await sleep(300)
             port.write(commands.turnOnData)
             this.logger.debug('turnOnData')
           }
           else {
+            await sleep(300)
             port.write(commands.setFTPContext)
-            this.logger.debug('setFTPContext')
+            await sleep(300)
+            port.write(commands.setMCIFTPAccount)
+            await sleep(300)
+            port.write(commands.setFTPGETFILETYPE)
+            await sleep(300)
+            port.write(commands.setFTPGETFILETRANSFERMODE)
+            await sleep(300)
+            port.write(commands.setFTPGETTIMEOUT)
+            await sleep(300)
+            port.write(commands.getFtpStat)
+            this.logger.debug('setFTPConfig')
           }
         }
 
         if (parsedResponse && parsedResponse['turnOnData']) {
           if (parsedResponse.turnOnData.status === 'OK') {
+            await sleep(300)
             port.write(commands.setFTPContext)
-            this.logger.debug('setFTPContext')
-            this.stop = true
-          }
-        }
-
-        if (this.stop && response === 'OK') {
-          port.write(commands.setFTPContext)
-          this.logger.debug('retry for setFTPContext')
-        }
-
-        if (parsedResponse && parsedResponse['setFTPContext']) {
-          if (parsedResponse.setFTPContext.status === 'OK') {
-            if ((this.imsiDict[`ttyUSB${portNumber}`]).slice(0, 6).includes('43211')) {
-              port.write(commands.setMCIFTPAccount)
-              this.logger.debug('setMCIFTPAccount')
-            }
-          }
-        }
-
-        if (parsedResponse && parsedResponse['setMCIFTPAccount']) {
-          if (parsedResponse.setMCIFTPAccount.status === 'OK') {
+            await sleep(300)
+            port.write(commands.setMCIFTPAccount)
+            await sleep(300)
             port.write(commands.setFTPGETFILETYPE)
-            this.logger.debug('setFTPGETFILETYPE')
-          }
-        }
-
-        if (parsedResponse && parsedResponse['setFTPGETFILETYPE']) {
-          if (parsedResponse.setFTPGETFILETYPE.status === 'OK') {
+            await sleep(300)
             port.write(commands.setFTPGETFILETRANSFERMODE)
-            this.logger.debug('setFTPGETFILETRANSFERMODE')
-          }
-        }
-
-        if (parsedResponse && parsedResponse['setFTPGETFILETRANSFERMODE']) {
-          if (parsedResponse.setFTPGETFILETRANSFERMODE.status === 'OK') {
+            await sleep(300)
             port.write(commands.setFTPGETTIMEOUT)
-            this.logger.debug('setFTPGETTIMEOUT')
+            await sleep(300)
+            port.write(commands.getFtpStat)
+            this.logger.debug('setFTPConfig')
+
           }
         }
 
-        if (parsedResponse && parsedResponse['setFTPGETTIMEOUT']) {
-          if (parsedResponse.setFTPGETTIMEOUT.status === 'OK') {
-            port.write(commands.getFtpStat)
-            this.logger.debug('getFtpStat')
-          }
-        }
+        // if (parsedResponse && parsedResponse['setFTPContext']) {
+        //   if (parsedResponse.setFTPContext.status === 'OK') {
+        //     if ((this.imsiDict[`ttyUSB${portNumber}`]).slice(0, 6).includes('43211')) {
+        //       await sleep(300)
+        //       port.write(commands.setMCIFTPAccount)
+        //       this.logger.debug('setMCIFTPAccount')
+        //     }
+        //   }
+        // }
+
+        // if (parsedResponse && parsedResponse['setMCIFTPAccount']) {
+        //   if (parsedResponse.setMCIFTPAccount.status === 'OK') {
+        //     await sleep(300)
+        //     port.write(commands.setFTPGETFILETYPE)
+        //     this.logger.debug('setFTPGETFILETYPE')
+        //   }
+        // }
+
+        // if (parsedResponse && parsedResponse['setFTPGETFILETYPE']) {
+        //   if (parsedResponse.setFTPGETFILETYPE.status === 'OK') {
+        //     await sleep(300)
+        //     port.write(commands.setFTPGETFILETRANSFERMODE)
+        //     this.logger.debug('setFTPGETFILETRANSFERMODE')
+        //   }
+        // }
+
+        // if (parsedResponse && parsedResponse['setFTPGETFILETRANSFERMODE']) {
+        //   if (parsedResponse.setFTPGETFILETRANSFERMODE.status === 'OK') {
+        //     await sleep(300)
+        //     port.write(commands.setFTPGETTIMEOUT)
+        //     this.logger.debug('setFTPGETTIMEOUT')
+        //   }
+        // }
+
+        // if (parsedResponse && parsedResponse['setFTPGETTIMEOUT']) {
+        //   if (parsedResponse.setFTPGETTIMEOUT.status === 'OK') {
+        //     await sleep(300)
+        //     port.write(commands.getFtpStat)
+        //     this.logger.debug('getFtpStat')
+        //   }
+        // }
 
         if (parsedResponse && parsedResponse['getFtpStat']) {
 
           if (parsedResponse.getFtpStat.ftpStat === '4') {
             if ((this.imsiDict[`ttyUSB${portNumber}`]).slice(0, 6).includes('43211')) {
+              await sleep(300)
               port.write(commands.openMCIFTPConnection)
               this.logger.debug('openMCIFTPConnection')
             }
           }
           if (parsedResponse.getFtpStat.ftpStat === '2') {
             if ((this.imsiDict[`ttyUSB${portNumber}`]).slice(0, 6).includes('43211')) {
+              await sleep(300)
               port.write(commands.getMCIFTPDownloadedFileSize)
               // port.write(commands.clearUFSStorage)
               this.logger.log('getting ftp file size')
@@ -1382,25 +1403,18 @@ export class ProbService implements OnModuleInit {
           }
           if (parsedResponse.getFtpStat.ftpStat === '1') {
             if ((this.imsiDict[`ttyUSB${portNumber}`]).slice(0, 6).includes('43211')) {
-              // if (this.waitForFtpStatToChangeFrom1to2 === 0) {
-              //   this.waitForFtpStatToChangeFrom1to2 = 4
-              //   if (this.mciDirectorySetCorrectly) {
+              await sleep(300)
               port.write(commands.getMCIFTPFile)
               this.logger.debug('getMCIFTPFile')
               this.ftpDLDFileSize = 0
               this.ftpDLDFileTime = (new Date()).getTime()
-              //   }
-              // }
-              // else {
-              //   this.waitForFtpStatToChangeFrom1to2 = this.waitForFtpStatToChangeFrom1to2 - 1
-              // }
-
             }
           }
         }
 
         if (parsedResponse && parsedResponse['openMCIFTPConnection']) {
           if (parsedResponse.openMCIFTPConnection.err === '0') {
+            await sleep(300)
             port.write(commands.setMCIFTPGETCURRENTDIRECTORY)
             this.logger.log('setMCIFTPGETCURRENTDIRECTORY')
           }
@@ -1409,23 +1423,48 @@ export class ProbService implements OnModuleInit {
         if (parsedResponse && parsedResponse['setMCIFTPGETCURRENTDIRECTORY']) {
           if (parsedResponse.setMCIFTPGETCURRENTDIRECTORY.err === '0' && parsedResponse.setMCIFTPGETCURRENTDIRECTORY.protocolError === '0') {
             this.mciDirectorySetCorrectly = true
+            await sleep(300)
             port.write(commands.getFtpStat)
             this.logger.log('getFtpStat')
           }
           else {
+            await sleep(300)
             port.write(commands.setMCIFTPGETCURRENTDIRECTORY)
           }
         }
 
+        if (parsedResponse && parsedResponse['getMCIFTPFile']) {
+          const intervalId = setInterval(async () => {
+            port.write(commands.getMCIFTPDownloadedFileSize)
+          }, 1000)
+
+          this.ftpDLIntervalID[`interval_${intervalId}`] = true
+        }
 
         if (parsedResponse && parsedResponse['ftpGetComplete']) {
           const speed = (Number(parsedResponse.ftpGetComplete.transferlen) - this.ftpDLDFileSize) / ((new Date()).getTime() - this.ftpDLDFileTime)
           this.logger.log(`FTP DL Speed: ${speed} KB/s`)
           this.ftpDLDFileSize = 0
           this.ftpDLDFileTime = (new Date()).getTime()
-          port.write(commands.clearUFSStorage, (err) => {
+          await sleep(300)
+          port.write(commands.clearUFSStorage, async (err) => {
             if (!err) {
               this.logger.log('Download completed and UFS storage cleared successfully. ')
+              await sleep(300)
+              port.write(commands.closeFtpConn, async (err) => {
+                if (!err) {
+                  this.logger.log('FTP Connection Closed. ')
+                  await sleep(300)
+                  port.write(commands.turnOffData)
+                }
+              })
+
+              const toClearIntervalIds = Object.keys(this.ftpDLIntervalID).filter(key => this.ftpDLIntervalID[key]);
+              for (const stringified_intervalId of toClearIntervalIds) {
+                const intervalId = Number(stringified_intervalId.split("_")[1])
+                clearInterval(intervalId)
+                this.ftpDLIntervalID[`interval_${intervalId}`] = false
+              }
             }
           })
         }
@@ -1710,7 +1749,13 @@ export class ProbService implements OnModuleInit {
                     this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.allTech,
                       async () => {
                         await sleep(4000)
-                        this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.turnOffData)
+                        setInterval(async () => {
+                          const activeIntervals = Object.keys(this.ftpDLIntervalID).filter(key => this.ftpDLIntervalID[key])
+                          if (activeIntervals.length === 0) {
+                            this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.turnOffData)
+                          }
+                          this.logger.error(activeIntervals)
+                        }, 6000)
                         // #region alternative
                         // await sleep(2000)
                         // this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getCurrentAPN)

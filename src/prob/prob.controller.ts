@@ -7,7 +7,9 @@ import { StartLogDto } from './dto/start-log.dto';
 
 @Controller('prob')
 export class ProbController {
-  constructor(private readonly probService: ProbService) { }
+  constructor(
+    private readonly probService: ProbService,
+  ) { }
 
   @Post()
   create(@Body() createProbDto: CreateProbDto) {

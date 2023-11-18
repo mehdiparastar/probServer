@@ -14,8 +14,12 @@ import { GSMLongCall } from './entities/gsmLongCall.entity';
 import { WCDMALongCall } from './entities/wcdmaLongCall.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Quectel, GPSData, GSMIdle, WCDMAIdle, LTEIdle, ALLTECHIdle, GSMLongCall, WCDMALongCall, Inspection])],
+  imports: [
+    TypeOrmModule.forFeature([User, Quectel, GPSData, GSMIdle, WCDMAIdle, LTEIdle, ALLTECHIdle, GSMLongCall, WCDMALongCall, Inspection])
+  ],
   controllers: [ProbController],
-  providers: [ProbService],
+  providers: [
+    ProbService,
+  ],
 })
 export class ProbModule { }
