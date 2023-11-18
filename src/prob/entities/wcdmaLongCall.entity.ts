@@ -53,13 +53,13 @@ export class WCDMALongCall {
     @Column({ nullable: true })
     comMod: string
 
-    @Column({ type: 'enum', enum: callStatus, default: callStatus.Idle })
+    @Column({ type: 'enum', enum: callStatus, default: callStatus.Idle }) // this should be idle at first
     callingStatus: callStatus
 
-    @ManyToOne(() => Inspection, (inspection) => inspection.wcdmaIdles, { nullable: false })
+    @ManyToOne(() => Inspection, (inspection) => inspection.wcdmaLongCalls, { nullable: false })
     inspection: Inspection;
 
-    @ManyToOne(() => GPSData, (location) => location.wcdmaIdleSamples, { nullable: true })
+    @ManyToOne(() => GPSData, (location) => location.wcdmaLongCallSamples, { nullable: true })
     location: GPSData
 
     @CreateDateColumn()

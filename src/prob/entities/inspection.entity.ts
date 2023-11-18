@@ -4,6 +4,9 @@ import { User } from "./user.entity";
 import { GSMIdle } from "./gsmIdle.entity";
 import { WCDMAIdle } from "./wcdmaIdle.entity";
 import { LTEIdle } from "./lteIdle.entity";
+import { GSMLongCall } from "./gsmLongCall.entity";
+import { WCDMALongCall } from "./wcdmaLongCall.entity";
+import { FTPDL } from "./ftpDL.entity";
 
 @Entity()
 export class Inspection {
@@ -27,6 +30,15 @@ export class Inspection {
 
     @OneToMany(() => LTEIdle, (lteIdle) => lteIdle.inspection, { cascade: true })
     lteIdles: LTEIdle[];
+
+    @OneToMany(() => GSMLongCall, (gsmLongCall) => gsmLongCall.inspection, { cascade: true })
+    gsmLongCalls: GSMLongCall[];
+
+    @OneToMany(() => WCDMALongCall, (wcdmaLongCall) => wcdmaLongCall.inspection, { cascade: true })
+    wcdmaLongCalls: WCDMALongCall[];
+
+    @OneToMany(() => FTPDL, (ftpDL) => ftpDL.inspection, { cascade: true })
+    ftpDLs: FTPDL[];
 
     @CreateDateColumn()
     createdAt?: Date;

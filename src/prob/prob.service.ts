@@ -19,6 +19,7 @@ import { ALLTECHIdle } from './entities/alltechIdle.entity';
 import { GSMLongCall } from './entities/gsmLongCall.entity';
 import { callStatus } from './enum/callStatus.enum';
 import { WCDMALongCall } from './entities/wcdmaLongCall.entity';
+import { FTPDL } from './entities/ftpDL.entity';
 
 const serialPortCount = 32
 
@@ -342,8 +343,8 @@ export class ProbService implements OnModuleInit {
     @InjectRepository(ALLTECHIdle) private allTechIdlesRepo: Repository<ALLTECHIdle>,
     @InjectRepository(GSMLongCall) private gsmLongCallRepo: Repository<GSMLongCall>,
     @InjectRepository(WCDMALongCall) private wcdmaLongCallRepo: Repository<WCDMALongCall>,
+    @InjectRepository(FTPDL) private ftpDLRepo: Repository<FTPDL>,
   ) {
-
     this.allPortsInitializing()
   }
 
@@ -635,18 +636,18 @@ export class ProbService implements OnModuleInit {
               const rmcData = parseRMC(response);
               const gpsTime = ggaData.time || rmcData.time
               if (gpsTime && gpsTime !== '' && this.logStarted) {
-                // const gpsData = this.gpsDataRepo.upsert({
-                //   gpsTime: gpsTime,
-                //   latitude: ggaData.latitude || rmcData.latitude,
-                //   longitude: ggaData.longitude || rmcData.longitude,
-                //   altitude: ggaData.altitude,
-                //   groundSpeed: rmcData.groundSpeed,
-                // },
-                //   {
-                //     conflictPaths: ['gpsTime'],
-                //     skipUpdateIfNoValuesChanged: true
-                //   }
-                // )
+                const gpsData = this.gpsDataRepo.upsert({
+                  gpsTime: gpsTime,
+                  latitude: ggaData.latitude || rmcData.latitude,
+                  longitude: ggaData.longitude || rmcData.longitude,
+                  altitude: ggaData.altitude,
+                  groundSpeed: rmcData.groundSpeed,
+                },
+                  {
+                    conflictPaths: ['gpsTime'],
+                    skipUpdateIfNoValuesChanged: true
+                  }
+                )
               }
             }
           }
@@ -1342,48 +1343,6 @@ export class ProbService implements OnModuleInit {
           }
         }
 
-        // if (parsedResponse && parsedResponse['setFTPContext']) {
-        //   if (parsedResponse.setFTPContext.status === 'OK') {
-        //     if ((this.imsiDict[`ttyUSB${portNumber}`]).slice(0, 6).includes('43211')) {
-        //       await sleep(300)
-        //       port.write(commands.setMCIFTPAccount)
-        //       this.logger.debug('setMCIFTPAccount')
-        //     }
-        //   }
-        // }
-
-        // if (parsedResponse && parsedResponse['setMCIFTPAccount']) {
-        //   if (parsedResponse.setMCIFTPAccount.status === 'OK') {
-        //     await sleep(300)
-        //     port.write(commands.setFTPGETFILETYPE)
-        //     this.logger.debug('setFTPGETFILETYPE')
-        //   }
-        // }
-
-        // if (parsedResponse && parsedResponse['setFTPGETFILETYPE']) {
-        //   if (parsedResponse.setFTPGETFILETYPE.status === 'OK') {
-        //     await sleep(300)
-        //     port.write(commands.setFTPGETFILETRANSFERMODE)
-        //     this.logger.debug('setFTPGETFILETRANSFERMODE')
-        //   }
-        // }
-
-        // if (parsedResponse && parsedResponse['setFTPGETFILETRANSFERMODE']) {
-        //   if (parsedResponse.setFTPGETFILETRANSFERMODE.status === 'OK') {
-        //     await sleep(300)
-        //     port.write(commands.setFTPGETTIMEOUT)
-        //     this.logger.debug('setFTPGETTIMEOUT')
-        //   }
-        // }
-
-        // if (parsedResponse && parsedResponse['setFTPGETTIMEOUT']) {
-        //   if (parsedResponse.setFTPGETTIMEOUT.status === 'OK') {
-        //     await sleep(300)
-        //     port.write(commands.getFtpStat)
-        //     this.logger.debug('getFtpStat')
-        //   }
-        // }
-
         if (parsedResponse && parsedResponse['getFtpStat']) {
 
           if (parsedResponse.getFtpStat.ftpStat === '4') {
@@ -1468,11 +1427,27 @@ export class ProbService implements OnModuleInit {
             }
           })
         }
+
         if (parsedResponse && parsedResponse['getMCIFTPDownloadedFileSize']) {
           const speed = (Number(parsedResponse.getMCIFTPDownloadedFileSize.transferlen) - this.ftpDLDFileSize) / ((new Date()).getTime() - this.ftpDLDFileTime)
           this.logger.log(`FTP DL Speed: ${speed} KB/s`)
           this.ftpDLDFileSize = Number(parsedResponse.getMCIFTPDownloadedFileSize.transferlen) === 57675882 ? 0 : Number(parsedResponse.getMCIFTPDownloadedFileSize.transferlen)
           this.ftpDLDFileTime = (new Date()).getTime()
+          if (this.logStarted) {
+            const location = await this.gpsDataRepo
+              .createQueryBuilder()
+              .where('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt)) <= 1000000') // One second has 1,000,000 microseconds
+              .orderBy('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt))', 'ASC')
+              .setParameter('desiredCreatedAt', new Date())
+              .getOne();
+
+            const newEntry = this.ftpDLRepo.create({
+              speed: speed,
+              inspection: this.inspection,
+              location: location
+            })
+            const save = await this.ftpDLRepo.save(newEntry)
+          }
         }
       });
 
@@ -1743,51 +1718,22 @@ export class ProbService implements OnModuleInit {
                   //   break;
                   //#endregion
 
-                  case scenarioName.FTP_DL_TH:
-                    this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.clearUFSStorage)
-                    await sleep(1000)
-                    this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.allTech,
-                      async () => {
-                        await sleep(4000)
-                        setInterval(async () => {
-                          const activeIntervals = Object.keys(this.ftpDLIntervalID).filter(key => this.ftpDLIntervalID[key])
-                          if (activeIntervals.length === 0) {
-                            this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.turnOffData)
-                          }
-                          this.logger.error(activeIntervals)
-                        }, 6000)
-                        // #region alternative
-                        // await sleep(2000)
-                        // this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getCurrentAPN)
-                        // await sleep(2000)
-                        // this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getDataConnectivityStatus)
-                        // await sleep(2000)
+                  // case scenarioName.FTP_DL_TH:
+                  //   this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.clearUFSStorage)
+                  //   await sleep(1000)
+                  //   this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.allTech,
+                  //     async () => {
+                  //       await sleep(4000)
+                  //       setInterval(async () => {
+                  //         const activeIntervals = Object.keys(this.ftpDLIntervalID).filter(key => this.ftpDLIntervalID[key])
+                  //         if (activeIntervals.length === 0) {
+                  //           this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.turnOffData)
+                  //         }
+                  //         this.logger.error(`${JSON.stringify(activeIntervals)} | Try number: ${Object.keys(this.ftpDLIntervalID).length}`)
+                  //       }, 6000)
+                  //     })
 
-                        // this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.setFTPContext)
-                        // await sleep(500)
-                        // if (this.imsiDict[`ttyUSB${module.serialPortNumber}`].slice(0, 6).includes('43211')) {
-                        //   this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.setMCIFTPAccount)
-                        // }
-                        // await sleep(500)
-                        // this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.setFTPGETFILETYPE)
-                        // await sleep(500)
-                        // this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.setFTPGETFILETRANSFERMODE)
-                        // await sleep(500)
-                        // this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.setFTPGETTIMEOUT)
-                        // await sleep(500)
-                        // this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.openMCIFTPConnection)
-                        // await sleep(2000)
-                        // this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.setMCIFTPGETCURRENTDIRECTORY)
-                        // await sleep(2000)
-                        // setInterval(
-                        //   async () => {
-                        //     this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.getFtpStat)
-                        //   }, 1000
-                        // )
-                        //#endregion
-                      })
-
-                    break;
+                  //   break;
 
                   default:
                     break;
@@ -1802,7 +1748,7 @@ export class ProbService implements OnModuleInit {
           }
         }
         else {
-          return { msg: `please initiate again  - ${count} modeuls are ready from 16.` }
+          return { msg: `please initiate again - ${count} modeuls are ready from 16.` }
         }
       }
       else {

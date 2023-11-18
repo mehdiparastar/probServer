@@ -2,6 +2,9 @@ import { Column, CreateDateColumn, Entity, OneToMany, OneToOne, PrimaryGenerated
 import { GSMIdle } from "./gsmIdle.entity";
 import { WCDMAIdle } from "./wcdmaIdle.entity";
 import { LTEIdle } from "./lteIdle.entity";
+import { GSMLongCall } from "./gsmLongCall.entity";
+import { WCDMALongCall } from "./wcdmaLongCall.entity";
+import { FTPDL } from "./ftpDL.entity";
 
 @Entity()
 export class GPSData {
@@ -31,6 +34,15 @@ export class GPSData {
 
     @OneToMany(() => LTEIdle, (lteIdle) => lteIdle.location, { cascade: true, nullable: true }) // specify inverse side as a second parameter
     lteIdleSamples: LTEIdle
+
+    @OneToMany(() => GSMLongCall, (gsmLongCall) => gsmLongCall.location, { cascade: true, nullable: true })
+    gsmLongCallSamples: GSMLongCall[];
+
+    @OneToMany(() => WCDMALongCall, (wcdmaLongCall) => wcdmaLongCall.location, { cascade: true, nullable: true }) // specify inverse side as a second parameter
+    wcdmaLongCallSamples: WCDMALongCall
+
+    @OneToMany(() => FTPDL, (ftpdl) => ftpdl.location, { cascade: true, nullable: true }) // specify inverse side as a second parameter
+    ftpDLSamples: FTPDL
 
     @CreateDateColumn()
     createdAt?: Date;

@@ -12,10 +12,23 @@ import { LTEIdle } from './entities/lteIdle.entity';
 import { ALLTECHIdle } from './entities/alltechIdle.entity';
 import { GSMLongCall } from './entities/gsmLongCall.entity';
 import { WCDMALongCall } from './entities/wcdmaLongCall.entity';
+import { FTPDL } from './entities/ftpDL.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Quectel, GPSData, GSMIdle, WCDMAIdle, LTEIdle, ALLTECHIdle, GSMLongCall, WCDMALongCall, Inspection])
+    TypeOrmModule.forFeature([
+      User,
+      Quectel,
+      GPSData,
+      GSMIdle,
+      WCDMAIdle,
+      LTEIdle,
+      ALLTECHIdle,
+      GSMLongCall,
+      WCDMALongCall,
+      Inspection,
+      FTPDL
+    ])
   ],
   controllers: [ProbController],
   providers: [
