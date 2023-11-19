@@ -331,6 +331,7 @@ export class ProbService implements OnModuleInit {
   private waitForFtpStatToChangeFrom1to2: number = 2;
   private mciDirectorySetCorrectly: boolean = false
   private ftpDLIntervalID: { [key: string]: boolean } = {} //{'interval_NodeJS.Timeout:true}
+  private gpsTimeHelper: boolean = true
 
   constructor(
     @InjectRepository(User) private usersRepo: Repository<User>,
@@ -636,18 +637,27 @@ export class ProbService implements OnModuleInit {
               const rmcData = parseRMC(response);
               const gpsTime = ggaData.time || rmcData.time
               if (gpsTime && gpsTime !== '' && this.logStarted) {
-                const gpsData = this.gpsDataRepo.upsert({
-                  gpsTime: gpsTime,
-                  latitude: ggaData.latitude || rmcData.latitude,
-                  longitude: ggaData.longitude || rmcData.longitude,
-                  altitude: ggaData.altitude,
-                  groundSpeed: rmcData.groundSpeed,
-                },
-                  {
-                    conflictPaths: ['gpsTime'],
-                    skipUpdateIfNoValuesChanged: true
+                try {
+                  if (this.gpsTimeHelper) {
+                    this.gpsTimeHelper = false
+                    const gpsData = await this.gpsDataRepo.upsert({
+                      gpsTime: gpsTime,
+                      latitude: ggaData.latitude || rmcData.latitude,
+                      longitude: ggaData.longitude || rmcData.longitude,
+                      altitude: ggaData.altitude,
+                      groundSpeed: rmcData.groundSpeed,
+                    },
+                      {
+                        conflictPaths: ['gpsTime'],
+                        skipUpdateIfNoValuesChanged: true
+                      }
+                    )
+                    this.gpsTimeHelper = true
                   }
-                )
+                }
+                catch (ex) {
+                  this.logger.error(ex.message)
+                }
               }
             }
           }
@@ -1443,6 +1453,7 @@ export class ProbService implements OnModuleInit {
 
             const newEntry = this.ftpDLRepo.create({
               speed: speed,
+              roundNumber:Object.keys(this.ftpDLIntervalID).length,
               inspection: this.inspection,
               location: location
             })
@@ -1718,22 +1729,21 @@ export class ProbService implements OnModuleInit {
                   //   break;
                   //#endregion
 
-                  // case scenarioName.FTP_DL_TH:
-                  //   this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.clearUFSStorage)
-                  //   await sleep(1000)
-                  //   this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.allTech,
-                  //     async () => {
-                  //       await sleep(4000)
-                  //       setInterval(async () => {
-                  //         const activeIntervals = Object.keys(this.ftpDLIntervalID).filter(key => this.ftpDLIntervalID[key])
-                  //         if (activeIntervals.length === 0) {
-                  //           this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.turnOffData)
-                  //         }
-                  //         this.logger.error(`${JSON.stringify(activeIntervals)} | Try number: ${Object.keys(this.ftpDLIntervalID).length}`)
-                  //       }, 6000)
-                  //     })
-
-                  //   break;
+                  case scenarioName.FTP_DL_TH:
+                    this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.clearUFSStorage)
+                    await sleep(1000)
+                    this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.allTech,
+                      async () => {
+                        await sleep(4000)
+                        setInterval(async () => {
+                          const activeIntervals = Object.keys(this.ftpDLIntervalID).filter(key => this.ftpDLIntervalID[key])
+                          if (activeIntervals.length === 0) {
+                            this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.turnOffData)
+                          }
+                          this.logger.error(`${JSON.stringify(activeIntervals)} | Try number: ${Object.keys(this.ftpDLIntervalID).length}`)
+                        }, 5000)
+                      })
+                    break;
 
                   default:
                     break;
