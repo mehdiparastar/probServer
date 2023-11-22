@@ -30,19 +30,19 @@ export class GPSData {
     gsmIdleSamples: GSMIdle[];
 
     @OneToMany(() => WCDMAIdle, (wcdmaIdle) => wcdmaIdle.location, { cascade: true, nullable: true }) // specify inverse side as a second parameter
-    wcdmaIdleSamples: WCDMAIdle
+    wcdmaIdleSamples: WCDMAIdle[]
 
     @OneToMany(() => LTEIdle, (lteIdle) => lteIdle.location, { cascade: true, nullable: true }) // specify inverse side as a second parameter
-    lteIdleSamples: LTEIdle
+    lteIdleSamples: LTEIdle[]
 
     @OneToMany(() => GSMLongCall, (gsmLongCall) => gsmLongCall.location, { cascade: true, nullable: true })
     gsmLongCallSamples: GSMLongCall[];
 
     @OneToMany(() => WCDMALongCall, (wcdmaLongCall) => wcdmaLongCall.location, { cascade: true, nullable: true }) // specify inverse side as a second parameter
-    wcdmaLongCallSamples: WCDMALongCall
+    wcdmaLongCallSamples: WCDMALongCall[]
 
     @OneToMany(() => FTPDL, (ftpdl) => ftpdl.location, { cascade: true, nullable: true }) // specify inverse side as a second parameter
-    ftpDLSamples: FTPDL
+    ftpDLSamples: FTPDL[]
 
     @CreateDateColumn()
     createdAt?: Date;

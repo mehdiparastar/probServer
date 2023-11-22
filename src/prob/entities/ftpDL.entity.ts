@@ -9,10 +9,19 @@ export class FTPDL {
     id: number;
 
     @Column({ nullable: true })
-    speed: number    
+    speed: number
 
     @Column({ nullable: true })
-    roundNumber: number 
+    roundNumber: number
+
+    @Column({ nullable: true })
+    tech: string
+
+    @Column({ nullable: true })
+    mcc: string
+
+    @Column({ nullable: true })
+    mnc: string
 
     @ManyToOne(() => Inspection, (inspection) => inspection.ftpDLs, { nullable: false })
     inspection: Inspection;
