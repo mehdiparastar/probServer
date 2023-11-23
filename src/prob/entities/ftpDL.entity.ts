@@ -15,6 +15,12 @@ export class FTPDL {
     roundNumber: number
 
     @Column({ nullable: true })
+    transferLen: number
+
+    @Column({ default: false })
+    downloadCompleted: boolean
+
+    @Column({ nullable: true })
     tech: string
 
     @Column({ nullable: true })

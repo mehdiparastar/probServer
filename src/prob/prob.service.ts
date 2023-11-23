@@ -328,8 +328,6 @@ export class ProbService implements OnModuleInit {
   private callingStatus: { [portNumber: string]: string } = {}
   private ftpDLDFileSize: number
   private ftpDLDFileTime: number
-  private waitForFtpStatToChangeFrom1to2: number = 2;
-  private mciDirectorySetCorrectly: boolean = false
   private ftpDLIntervalID: { [key: string]: boolean } = {} //{'interval_NodeJS.Timeout:true}
   private gpsTimeHelper: boolean = true
   private ftpDLNetworkParameter: { mcc?: string, mnc?: string, tech?: string } = {}
@@ -576,24 +574,36 @@ export class ProbService implements OnModuleInit {
     return false
   }
 
-  async saveFtpDLEntry(roundNumber: number, speed: number) {
+  async saveFtpDLEntry(roundNumber: number, transferLen: number, downloadCompleted: boolean) {
+    const now = (new Date()).getTime()
+    const speed = (transferLen - this.ftpDLDFileSize) / (now - this.ftpDLDFileTime)
+
+    this.logger.log(`FTP DL Speed: ${speed} KB/s`)
+    
+    this.ftpDLDFileSize = transferLen
+    this.ftpDLDFileTime = now
+
     const location = await this.gpsDataRepo
       .createQueryBuilder('gps_data')
       .where('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt)) <= 2000000') // One second has 1,000,000 microseconds
       .orderBy('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt))', 'ASC')
       .setParameter('desiredCreatedAt', new Date())
-      .getOne();    
+      .getOne();
 
     const newEntry = this.ftpDLRepo.create({
       speed: speed,
-      roundNumber: Object.keys(this.ftpDLIntervalID).length,
+      roundNumber: roundNumber,
+      transferLen,
+      downloadCompleted,
       inspection: this.inspection,
       location: location,
       mcc: this.ftpDLNetworkParameter.mcc,
       mnc: this.ftpDLNetworkParameter.mnc,
       tech: this.ftpDLNetworkParameter.tech,
     })
+
     const save = await this.ftpDLRepo.save(newEntry)
+
     this.ftpConnectionEstablishingProgressTime = (new Date()).getTime()
   }
 
@@ -1453,7 +1463,6 @@ export class ProbService implements OnModuleInit {
 
         if (parsedResponse && parsedResponse['setMCIFTPGETCURRENTDIRECTORY']) {
           if (parsedResponse.setMCIFTPGETCURRENTDIRECTORY.err === '0' && parsedResponse.setMCIFTPGETCURRENTDIRECTORY.protocolError === '0') {
-            this.mciDirectorySetCorrectly = true
             await sleep(300)
             port.write(commands.getFtpStat)
             this.logger.log('getFtpStat')
@@ -1478,8 +1487,13 @@ export class ProbService implements OnModuleInit {
         }
 
         if (parsedResponse && parsedResponse['ftpGetComplete']) {
-          const speed = (Number(parsedResponse.ftpGetComplete.transferlen) - this.ftpDLDFileSize) / ((new Date()).getTime() - this.ftpDLDFileTime)
-          this.logger.log(`FTP DL Speed: ${speed} KB/s`)
+
+          await this.saveFtpDLEntry(
+            Object.keys(this.ftpDLIntervalID).length,
+            Number(parsedResponse.ftpGetComplete.transferlen),
+            true
+          )
+
           this.ftpDLDFileSize = 0
           this.ftpDLDFileTime = (new Date()).getTime()
 
@@ -1504,38 +1518,13 @@ export class ProbService implements OnModuleInit {
         }
 
         if (parsedResponse && parsedResponse['getMCIFTPDownloadedFileSize']) {
-          const speed = (Number(parsedResponse.getMCIFTPDownloadedFileSize.transferlen) - this.ftpDLDFileSize) / ((new Date()).getTime() - this.ftpDLDFileTime)
-          this.logger.log(`FTP DL Speed: ${speed} KB/s`)
-          this.ftpDLDFileSize = Number(parsedResponse.getMCIFTPDownloadedFileSize.transferlen)
-          this.ftpDLDFileTime = (new Date()).getTime()
+
           if (this.logStarted) {
-            // const twoSecondAgo = new Date((new Date()).getTime() - 2000)
-            // const twoSecondAfter = new Date((new Date()).getTime() + 2000)
-
-            // const location_ = await this.gpsDataRepo
-            //   .find({ where: { createdAt: Between(twoSecondAgo, twoSecondAfter) } })
-
-            const location = await this.gpsDataRepo
-              .createQueryBuilder('gps_data')
-              .where('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt)) <= 2000000') // One second has 1,000,000 microseconds
-              .orderBy('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt))', 'ASC')
-              .setParameter('desiredCreatedAt', new Date())
-              .getOne();
-
-            // this.logger.debug(`finded location id is = ${location?.id}`)
-            // this.logger.debug(`finded location_ count is = ${location_.length}`)
-
-            const newEntry = this.ftpDLRepo.create({
-              speed: speed,
-              roundNumber: Object.keys(this.ftpDLIntervalID).length,
-              inspection: this.inspection,
-              location: location,
-              mcc: this.ftpDLNetworkParameter.mcc,
-              mnc: this.ftpDLNetworkParameter.mnc,
-              tech: this.ftpDLNetworkParameter.tech,
-            })
-            const save = await this.ftpDLRepo.save(newEntry)
-            this.ftpConnectionEstablishingProgressTime = (new Date()).getTime()
+            await this.saveFtpDLEntry(
+              Object.keys(this.ftpDLIntervalID).length,
+              Number(parsedResponse.getMCIFTPDownloadedFileSize.transferlen),
+              false
+            )
           }
         }
       });
@@ -1684,9 +1673,9 @@ export class ProbService implements OnModuleInit {
               this.expert = expert
 
               const newInspection = this.inspectionsRepo.create({
-                type: type,
-                code: code,
-                expert: expert
+                type: this.type,
+                code: this.code,
+                expert: this.expert
               })
               this.inspection = await this.inspectionsRepo.save(newInspection)
 
@@ -1819,20 +1808,18 @@ export class ProbService implements OnModuleInit {
                         this.ftpConnectionEstablishingProgressTime = (new Date()).getTime()
                         //////////////////////////////////////////////////////////////////////////////
                         setInterval(async () => {
-                          const twentySecondsAgo = new Date((new Date()).getTime() - 20000)
+                          const twentyFiveSecondsAgo = new Date((new Date()).getTime() - 25000)
 
                           const find = (await this.ftpDLRepo.find({
-                            where: { createdAt: MoreThanOrEqual(twentySecondsAgo) },
+                            where: { createdAt: MoreThanOrEqual(twentyFiveSecondsAgo) },
                             select: { speed: true }
                           })).filter(item => item.speed !== null && item.speed !== undefined)
 
                           const validSpeeds = find.filter(item => item.speed && Number(item.speed) > 0)
 
-                          const condition = validSpeeds.length > 0
+                          this.logger.debug(`25 sec ago valid ftp count: ${validSpeeds.length} of ${find.length}`)
 
-                          this.logger.debug(`20 sec ago ftp count: ${validSpeeds.length} of ${find.length} - condition is: ${condition}`)
-
-                          if (!condition) {
+                          if (validSpeeds.length === 0) {
                             if ((find.length > 10 && validSpeeds.length < find.length / 3) || (Object.keys(this.ftpDLIntervalID).length > 0 && validSpeeds.length === 0 && find.length === 0)) {
                               this.logger.debug('Force to reset after 20 second')
                               this.ftpDLDFileSize = 0
@@ -1850,17 +1837,17 @@ export class ProbService implements OnModuleInit {
                           const timeToLastAction = (new Date()).getTime() - this.ftpConnectionEstablishingProgressTime
                           const activeIntervals = Object.keys(this.ftpDLIntervalID).filter(key => this.ftpDLIntervalID[key])
                           this.logger.error(`${JSON.stringify(activeIntervals)} | Try number: ${Object.keys(this.ftpDLIntervalID).length} | Time To Last Action: ${timeToLastAction} s`)
-                          if (activeIntervals.length === 0 || timeToLastAction > 8000) {
+                          if (activeIntervals.length === 0 || timeToLastAction > 10000) {
                             this.ftpDLDFileSize = 0
                             this.ftpDLDFileTime = (new Date()).getTime()
                             this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.clearUFSStorage)
-                            await sleep(300)
                             const toClearIntervalIds = Object.keys(this.ftpDLIntervalID).filter(key => this.ftpDLIntervalID[key]);
                             for (const stringified_intervalId of toClearIntervalIds) {
                               const intervalId = Number(stringified_intervalId.split("_")[1])
                               clearInterval(intervalId)
                               this.ftpDLIntervalID[`interval_${intervalId}`] = false
                             }
+                            await sleep(300)
                             this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.turnOffData)
                           }
                         }, 4000)
