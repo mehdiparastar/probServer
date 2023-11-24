@@ -579,7 +579,7 @@ export class ProbService implements OnModuleInit {
     const speed = (transferLen - this.ftpDLDFileSize) / (now - this.ftpDLDFileTime)
 
     this.logger.log(`FTP DL Speed: ${speed} KB/s`)
-    
+
     this.ftpDLDFileSize = transferLen
     this.ftpDLDFileTime = now
 
@@ -621,6 +621,29 @@ export class ProbService implements OnModuleInit {
     await this.quectelsRepo.query(`delete from ${this.quectelsRepo.metadata.tableName}`);
     await this.inspectionsRepo.query(`delete from ${this.inspectionsRepo.metadata.tableName}`);
     await this.gpsDataRepo.query(`delete from ${this.gpsDataRepo.metadata.tableName}`);
+
+    // await this.firstINIT()
+  }
+
+  async firstINIT() {
+    let tryInit: number = 0
+
+    while (true) {
+      tryInit = tryInit + 1;
+      const init = await this.allPortsInitializing()
+      const count = await this.quectelsRepo.count({ where: { simStatus: 'READY', callability: true } })
+      const allEntries = (await this.getModulesStatus()).filter(entry => entry.simStatus === 'READY')
+
+      this.logger.warn(`initializing try number is ${tryInit} and count is ${count} and allEntries count is ${allEntries.length} `)
+
+      if (count === 16 && allEntries.length === 8) {
+        const gps = await this.enablingGPS()
+        if (gps === true) {
+          this.logger.warn('Prob is READY to START.')
+          break
+        }
+      }
+    }
   }
 
   singlePortInitilizing(portNumber: number) {

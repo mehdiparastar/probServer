@@ -28,6 +28,7 @@ export class ProbController {
 
   @Get('port-initializing')
   portInitializing() {
+    // return this.probService.firstINIT()
     return this.probService.allPortsInitializing()
   }
 
