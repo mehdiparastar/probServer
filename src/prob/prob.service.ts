@@ -1821,7 +1821,7 @@ export class ProbService implements OnModuleInit {
 
                           if (validSpeeds.length === 0) {
                             if ((find.length > 10 && validSpeeds.length < find.length / 3) || (Object.keys(this.ftpDLIntervalID).length > 0 && validSpeeds.length === 0 && find.length === 0)) {
-                              this.logger.debug('Force to reset after 20 second')
+                              this.logger.debug('Force to reset')
                               this.ftpDLDFileSize = 0
                               this.ftpDLDFileTime = (new Date()).getTime()
                               this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.clearUFSStorage)
@@ -1850,7 +1850,7 @@ export class ProbService implements OnModuleInit {
                             await sleep(300)
                             this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.turnOffData)
                           }
-                        }, 4000)
+                        }, 10000)
                       })
                     break;
 
