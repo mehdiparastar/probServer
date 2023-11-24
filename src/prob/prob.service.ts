@@ -67,7 +67,7 @@ const correctPattern = {
   'setFTPGETFILETRANSFERMODE': /AT\+QFTPCFG="transmode",1\r\r\nOK\r\n/,
   'setFTPGETTIMEOUT': /AT\+QFTPCFG="rsptimeout",90\r\r\nOK\r\n/,
   'openMCIFTPConnection': /.*\r\n\+QFTPOPEN: (\d+),(\d+)\r\n/,
-  'getMCIFTPFile': /.*QFTPGET=.*Upload.*QuectelMSDocs.zip.*"UFS:QuectelMSDocs.zip.*/
+  'getMCIFTPFile': /.*QFTPGET=.*Upload.*QuectelMSDocs.zip.*"UFS:QuectelMSDocs.zip.*|.*QFTPGET=.*"UFS:QuectelMSDocs.zip.*/
 }
 
 const cmeErrorPattern = {
@@ -346,7 +346,7 @@ export class ProbService implements OnModuleInit {
     @InjectRepository(WCDMALongCall) private wcdmaLongCallRepo: Repository<WCDMALongCall>,
     @InjectRepository(FTPDL) private ftpDLRepo: Repository<FTPDL>,
   ) {
-    this.allPortsInitializing()
+    // this.allPortsInitializing()
   }
 
   parseData(response: string) {
@@ -622,7 +622,7 @@ export class ProbService implements OnModuleInit {
     await this.inspectionsRepo.query(`delete from ${this.inspectionsRepo.metadata.tableName}`);
     await this.gpsDataRepo.query(`delete from ${this.gpsDataRepo.metadata.tableName}`);
 
-    // await this.firstINIT()
+    await this.firstINIT()
   }
 
   async firstINIT() {

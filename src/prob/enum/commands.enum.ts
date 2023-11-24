@@ -37,7 +37,7 @@ export enum commands {
     setMCIFTPGETCURRENTDIRECTORY_ = 'AT+QFTPCWD="/home/mci"\r\n',
     setMCIFTPGETCURRENTDIRECTORY = 'AT+QFTPCWD="/home/amir/downloads"\r\n',
 
-    getMCIFTPFile = 'AT+QFTPGET="Autodesk.Maya.2020.4.x64.rar?1612964196","UFS:mehdiparastar.rar",0,60000000\r\n',
+    getMCIFTPFile = 'AT+QFTPGET="Autodesk.Maya.2020.4.x64.rar?1612964196","UFS:QuectelMSDocs.zip",0,60000000\r\n',
     getMCIFTPFile_ = 'AT+QFTPGET="./Upload/QuectelMSDocs.zip","UFS:QuectelMSDocs.zip"\r\n',
     getMCIFTPFile1 = 'AT+QFTPGET="../amir/downloads/Autodesk.Maya.2020.4.x64.rar?1612964196","COM:test.zip"\r\n',
     getMCIFTPDownloadedFileSize = 'AT+QFLST="UFS:QuectelMSDocs.zip"\r\n',
