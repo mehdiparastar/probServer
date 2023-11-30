@@ -13,6 +13,7 @@ import { ALLTECHIdle } from './entities/alltechIdle.entity';
 import { GSMLongCall } from './entities/gsmLongCall.entity';
 import { WCDMALongCall } from './entities/wcdmaLongCall.entity';
 import { FTPDL } from './entities/ftpDL.entity';
+import { FTPUL } from './entities/ftpUL.entity';
 
 @Module({
   imports: [
@@ -27,7 +28,8 @@ import { FTPDL } from './entities/ftpDL.entity';
       GSMLongCall,
       WCDMALongCall,
       Inspection,
-      FTPDL
+      FTPDL,
+      FTPUL
     ])
   ],
   controllers: [ProbController],

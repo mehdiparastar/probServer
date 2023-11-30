@@ -46,6 +46,11 @@ export enum commands {
     getFtpStat = 'AT+QFTPSTAT\r\n',
     closeFtpConn = 'AT+QFTPCLOSE\r\n',
     getFTPCurrentDirectory = 'AT+QFTPPWD\r\n',
-    clearUFSStorage = 'AT+QFDEL="*"\r\n'
+    clearUFSStorage = 'AT+QFDEL="*"\r\n',
 
+    resetFactory = 'AT&F\r\n',
+    rebootModule = 'AT+CFUN=1,1\r\n',
+
+    openFileToWrite = 'AT+QFOPEN="UFS:MEHDI.dat",0\r\n',
+    
 }

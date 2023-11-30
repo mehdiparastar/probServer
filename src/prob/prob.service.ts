@@ -20,6 +20,10 @@ import { GSMLongCall } from './entities/gsmLongCall.entity';
 import { callStatus } from './enum/callStatus.enum';
 import { WCDMALongCall } from './entities/wcdmaLongCall.entity';
 import { FTPDL } from './entities/ftpDL.entity';
+import { FTPUL } from './entities/ftpUL.entity';
+import * as fs from 'fs';
+import { ONEMBFILE } from './ONEMBTEXTFILE'
+import { isNotEmptyObject } from 'class-validator';
 
 const serialPortCount = 32
 
@@ -28,12 +32,18 @@ const WAIT_TO_NEXT_COMMAND_IN_MILISECOND = 600
 const serialPortInterfaces = [[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11], [12, 13, 14, 15], [16, 17, 18, 19], [20, 21, 22, 23], [24, 25, 26, 27], [28, 29, 30, 31]]
 
 const correctPattern = {
-  'moduleInformation': /ATI\r\r\nQuectel\r\n([^]+)\r\nRevision: ([^\r\n\r\n]+)/,
-  'moduleIMSI': /AT\+CIMI\r\r\n(\d+)\r\n\r\nOK\r\n/,
-  'moduleIMEI': /AT\+CGSN\r\r\n(\d+)\r\n\r\nOK\r\n/,
-  'simStatus': /AT\+CPIN\?\r\r\n\+CPIN: (\w+)\r\n\r\nOK\r\n/,
-  'enableGPS': /AT\+QGPS=1\r\r\n(\w+)\r\n/,
-  'isGPSActive': /AT\+QGPSLOC=2\r\r\n\+QGPSLOC: ([\d.]+),([\d.]+),([\d.]+),([\d.]+),([\d.]+),(\d+),([\d.]+),([\d.]+),([\d.]+),(\d+),(\d+)\r\n\r\nOK\r\n/,
+  // 'moduleInformation': /ATI\r\r\nQuectel\r\n([^]+)\r\nRevision: ([^\r\n\r\n]+)/,
+  'moduleInformation': /.*([^]+)\r\nRevision: ([^\r\n\r\n]+).*/,
+  // 'moduleIMSI': /AT\+CIMI\r\r\n(\d+)\r\n\r\nOK\r\n/,
+  'moduleIMSI': /.*CIMI\r\r\n(\d+).*/,
+  // 'moduleIMEI': /AT\+CGSN\r\r\n(\d+)\r\n\r\nOK\r\n/,
+  'moduleIMEI': /.*CGSN\r\r\n(\d+).*/,
+  // 'simStatus': /AT\+CPIN\?\r\r\n\+CPIN: (\w+)\r\n\r\nOK\r\n/,
+  'simStatus': /.*CPIN: (\w+).*/,
+  // 'enableGPS': /AT\+QGPS=1\r\r\n(\w+)\r\n/,
+  'enableGPS': /.*QGPS=1\r\r\n(\w+).*/,
+  // 'isGPSActive': /AT\+QGPSLOC=2\r\r\n\+QGPSLOC: ([\d.]+),([\d.]+),([\d.]+),([\d.]+),([\d.]+),(\d+),([\d.]+),([\d.]+),([\d.]+),(\d+),(\d+)\r\n\r\nOK\r\n/,
+  'isGPSActive': /.*QGPSLOC: ([\d.]+),([\d.]+),([\d.]+),([\d.]+),([\d.]+),(\d+),([\d.]+),([\d.]+),([\d.]+),(\d+),(\d+).*/,
   'lockGSM': /AT\+QCFG="nwscanmode",1\r\r\nOK\r\n/,
   'lockWCDMA': /AT\+QCFG="nwscanmode",2\r\r\nOK\r\n/,
   'lockLTE': /AT\+QCFG="nwscanmode",3\r\r\nOK\r\n/,
@@ -51,14 +61,18 @@ const correctPattern = {
   'getDataConnectivityStatus': /AT\+QIACT\?\r\r\n\+QIACT: (\d+),(\d+),(\d+),"(\d+.\d+.\d+.\d+)".*\r\n|AT\+QIACT\?\r\r\nOK\r\n/,
   'getFtpStat': /.*QFTPSTAT: 0,(\d+).*/,
   'ftpGetComplete': /\r\n\+QFTPGET: 0,(\d+)\r\n/,
-  'getMCIFTPDownloadedFileSize': /.*\r\n\+QFLST: "UFS:QuectelMSDocs.zip",(\d+)\r\n\r\nOK\r\n/,
+  // 'getMCIFTPDownloadedFileSize': /.*\r\n\+QFLST: "UFS:QuectelMSDocs.zip",(\d+)\r\n\r\nOK\r\n/,
+  'getMCIFTPDownloadedFileSize': /.*QFLST: "UFS:QuectelMSDocs.zip",(\d+).*/,
   // 'AT+QFLST="UFS:QuectelMSDocs.zip"\r\r\n+QFLST: "UFS:QuectelMSDocs.zip",57897070\r\n\r\nOK\r\n'
   // \r\n+QFLST: "UFS:QuectelMSDocs.zip",57897070\r\n\r\nOK\r\n
   // 'getMCIFTPFile': /AT\+QFTPGET=".\/Upload\/QuectelMSDocs.zip","UFS:QuectelMSDocs.zip"\r\r\nOK\r\n/,
   //AT+QFTPGET="./Upload/QuectelMSDocs.zip","UFS:QuectelMSDocs.zip"\r\r\n+CME ERROR: 603\r\n
-  'setMCIFTPGETCURRENTDIRECTORY': /.*\r\n\+QFTPCWD: (\d+),(\d+)\r\n/,
+  // 'setMCIFTPGETCURRENTDIRECTORY': /.*\r\n\+QFTPCWD: (\d+),(\d+)\r\n/,
+  'setMCIFTPGETCURRENTDIRECTORY': /.*QFTPCWD: (\d+),(\d+).*/,
   // \r\n+QFTPCWD: 0,0\r\n
-  'turnOffData': /AT\+QIDEACT=1\r\r\nOK\r\n/,
+
+  // 'turnOffData': /AT\+QIDEACT=1\r\r\nOK\r\n/,
+  'turnOffData': /.*QIDEACT=1.*/,
   'turnOnData': /AT\+QIACT=1\r\r\nOK\r\n|.*QIACT=1.*/,
   'setMCIAPN': /AT\+QICSGP=1,1,"mcinet","","",1\r\r\nOK\r\n/,
   'setFTPContext': /AT\+QFTPCFG="contextid",1\r\r\nOK\r\n/,
@@ -67,7 +81,9 @@ const correctPattern = {
   'setFTPGETFILETRANSFERMODE': /AT\+QFTPCFG="transmode",1\r\r\nOK\r\n/,
   'setFTPGETTIMEOUT': /AT\+QFTPCFG="rsptimeout",90\r\r\nOK\r\n/,
   'openMCIFTPConnection': /.*\r\n\+QFTPOPEN: (\d+),(\d+)\r\n/,
-  'getMCIFTPFile': /.*QFTPGET=.*Upload.*QuectelMSDocs.zip.*"UFS:QuectelMSDocs.zip.*|.*QFTPGET=.*"UFS:QuectelMSDocs.zip.*/
+  'getMCIFTPFile': /.*QFTPGET=.*Upload.*QuectelMSDocs.zip.*"UFS:QuectelMSDocs.zip.*|.*QFTPGET=.*"UFS:QuectelMSDocs.zip.*/,
+  'openFileToWrite': /.*QFOPEN: (\d+).*/,
+  'writeToFile': /.*QFWRITE: (\d+),(\d+)/
 }
 
 const cmeErrorPattern = {
@@ -299,6 +315,14 @@ const sleep = async (milisecond: number) => {
   await new Promise(resolve => setTimeout(resolve, milisecond))
 }
 
+async function printTimeReverse(endTimeInSeconds) {
+  for (let time = endTimeInSeconds; time >= 0; time--) {
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Adjust the delay if needed
+    console.log(`Time remaining: ${time} seconds`);
+  }
+  console.log('End time reached!');
+}
+
 const makeCallCommand = (imsi: string) => {
   if (imsi.slice(0, 6).includes('43211')) {
     return commands.callMCI
@@ -331,7 +355,13 @@ export class ProbService implements OnModuleInit {
   private ftpDLIntervalID: { [key: string]: boolean } = {} //{'interval_NodeJS.Timeout:true}
   private gpsTimeHelper: boolean = true
   private ftpDLNetworkParameter: { mcc?: string, mnc?: string, tech?: string } = {}
-  private ftpConnectionEstablishingProgressTime = (new Date()).getTime()
+  private ftpDLConnectionEstablishingProgressTime = (new Date()).getTime()
+  private ftpULConnectionEstablishingProgressTime = (new Date()).getTime()
+  private ftpUploadPreRequisits = false
+  private ftpUploadFileHandle: number
+  private ftpUploadWriteFileInterval: NodeJS.Timeout
+  private callabilityChecked: boolean = false
+  private callability = {}
 
   constructor(
     @InjectRepository(User) private usersRepo: Repository<User>,
@@ -345,6 +375,7 @@ export class ProbService implements OnModuleInit {
     @InjectRepository(GSMLongCall) private gsmLongCallRepo: Repository<GSMLongCall>,
     @InjectRepository(WCDMALongCall) private wcdmaLongCallRepo: Repository<WCDMALongCall>,
     @InjectRepository(FTPDL) private ftpDLRepo: Repository<FTPDL>,
+    @InjectRepository(FTPUL) private ftpULRepo: Repository<FTPUL>,
   ) {
     // this.allPortsInitializing()
   }
@@ -507,6 +538,8 @@ export class ProbService implements OnModuleInit {
             }
           }
         if (key === 'getMCIFTPFile') return { [key]: { 'status': 'OK' } }
+        if (key === 'openFileToWrite') return { [key]: { 'filehandle': correctMatches[1].trim() } }
+        if (key === 'writeToFile') return { [key]: { 'writtenLength': correctMatches[1].trim(), 'totalLength': correctMatches[2].trim() } }
       }
     }
 
@@ -604,7 +637,7 @@ export class ProbService implements OnModuleInit {
 
     const save = await this.ftpDLRepo.save(newEntry)
 
-    this.ftpConnectionEstablishingProgressTime = (new Date()).getTime()
+    this.ftpDLConnectionEstablishingProgressTime = (new Date()).getTime()
   }
 
   async onModuleInit() {
@@ -626,35 +659,80 @@ export class ProbService implements OnModuleInit {
   }
 
   async firstINIT() {
+    await printTimeReverse(5);
+
+    this.logger.debug('start to initializing...')
+
     let tryInit: number = 0
 
-    while (true) {
+    outerLoop: while (true) {
       tryInit = tryInit + 1;
       const init = await this.allPortsInitializing()
-      const count = await this.quectelsRepo.count({ where: { simStatus: 'READY', callability: true } })
+      const count = await this.quectelsRepo.count({ where: { simStatus: 'READY' } })
       const allEntries = (await this.getModulesStatus()).filter(entry => entry.simStatus === 'READY')
 
-      this.logger.warn(`initializing try number is ${tryInit} and count is ${count} and allEntries count is ${allEntries.length} `)
+      this.logger.warn(`\n\ninitializing try number is ${tryInit} and count is ${count} and allEntries count is ${allEntries.length}\n\n`)
 
       if (count === 16 && allEntries.length === 8) {
+
+        this.logger.log('Testing Callability ...')
+
+        if (this.callabilityChecked) {
+          innerLoop: while (true) {
+            for (const item of allEntries) {
+
+              if (!this.callability[`port_${item.serialPortNumber}`]) {
+
+                this.logger.log(`Testing port ${item.serialPortNumber}...`)
+                const port = this.serialPort[`ttyUSB${item.serialPortNumber}`]
+
+                port.write(
+                  makeCallCommand(this.imsiDict[`ttyUSB${item.serialPortNumber}`]),
+                  async (err) => {
+                    if (err) {
+                      const entry = await this.quectelsRepo.update(
+                        { serialPortNumber: item.serialPortNumber },
+                        { callability: false },
+                      )
+                    }
+                  })
+
+                await sleep(3000)
+                port.write(commands.getCallStatus)
+                await sleep(2000)
+
+              }
+
+              if (Object.values(this.callability).filter(x => x === true).length === 8) {
+                this.logger.warn('All Devices are callable.')
+                this.callabilityChecked = true
+                break innerLoop
+              }
+            }
+          }
+        }
+
+        this.logger.log('set GPS Confs...')
         const gps = await this.enablingGPS()
+
         if (gps === true) {
           this.logger.warn('Prob is READY to START.')
-          break
+          break outerLoop
         }
       }
     }
   }
 
-  singlePortInitilizing(portNumber: number) {
+  async singlePortInitilizing(portNumber: number) {
     if (this.serialPort[`ttyUSB${portNumber}`]) {
-      this.serialPort[`ttyUSB${portNumber}`].close(err => {
+      this.serialPort[`ttyUSB${portNumber}`].close(async (err) => {
         if (err) {
-          this.logger.error(`Error closing port ${portNumber}:`, err.message);
+          this.logger.error(`Error closing port ${portNumber}: ${err.message}`);
         } else {
           this.logger.log(`Port ${portNumber} closed`);
 
           // Reopen the port
+          this.logger.log(`Reopening Port ${portNumber}`);
           this.serialPort[`ttyUSB${portNumber}`].open();
         }
       })
@@ -674,6 +752,20 @@ export class ProbService implements OnModuleInit {
 
       port.on('data', async (data) => {
         const response = data.toString()
+        if (this.callabilityChecked === false) {
+          const match = response.match(/.*CAPS: (\d+).*/)
+          if (match[1] === '4') {
+            port.write(commands.hangUpCall)
+            port.write(commands.hangUpCall)
+            port.write(commands.hangUpCall)
+            const entry = await this.quectelsRepo.update(
+              { serialPortNumber: portNumber },
+              { callability: true },
+            )
+            this.logger.log(`port ${portNumber} is callable.`)
+            this.callability[`port_${portNumber}`] = true
+          }
+        }
         if (response !== '\r\n' && response.indexOf('GPGSA') < 0 && response.indexOf('GPRMC') < 0 && response.indexOf('GPGSV') < 0 && response.indexOf('GPVTG') < 0 && response.indexOf('GPGGA') < 0 && response.indexOf('servingcell') < 0) {
           this.logger.log(JSON.stringify(response))
         }
@@ -733,7 +825,9 @@ export class ProbService implements OnModuleInit {
         }
 
         const parsedResponse = this.parseData(response)
+
         // #region other events
+
         if (parsedResponse && parsedResponse['moduleInformation']) {
           if (parsedResponse['moduleInformation']['cmeErrorCode']) {
             const entry = await this.quectelsRepo.upsert(
@@ -748,7 +842,7 @@ export class ProbService implements OnModuleInit {
                 skipUpdateIfNoValuesChanged: true
               }
             )
-            this.logger.verbose(entry.raw.insertId, parsedResponse['moduleInformation']['cmeErrorCode'])
+            this.logger.verbose(`quectel entry added for port ${portNumber}. ${entry.raw.insertId} and module info is: ${parsedResponse['moduleInformation']['cmeErrorCode']}`)
           }
           else if (parsedResponse['moduleInformation']['cmsErrorCode']) {
             const entry = await this.quectelsRepo.upsert(
@@ -763,7 +857,7 @@ export class ProbService implements OnModuleInit {
                 skipUpdateIfNoValuesChanged: true
               }
             )
-            this.logger.verbose(entry.raw.insertId, parsedResponse['moduleInformation']['cmeErrorCode'])
+            this.logger.verbose(`quectel entry added for port ${portNumber}. ${entry.raw.insertId} and module info is: ${parsedResponse['moduleInformation']['cmsErrorCode']}`)
           }
           else {
             const entry = await this.quectelsRepo.upsert(
@@ -778,7 +872,7 @@ export class ProbService implements OnModuleInit {
                 skipUpdateIfNoValuesChanged: true
               }
             )
-            this.logger.verbose(entry.raw.insertId)
+            this.logger.verbose(`quectel entry added for port ${portNumber}. ${entry.raw.insertId} and module info is: ${JSON.stringify(parsedResponse['moduleInformation'])}`)
           }
 
           port.write(commands.getModuleIMEI)
@@ -859,24 +953,6 @@ export class ProbService implements OnModuleInit {
               { simStatus: parsedResponse['simStatus']['status'] },
             )
             this.logger.debug(parsedResponse['simStatus']['status'])
-
-            port.write(
-              makeCallCommand(this.imsiDict[`ttyUSB${portNumber}`]),
-              async (err) => {
-                if (err) {
-                  const entry = await this.quectelsRepo.update(
-                    { serialPortNumber: portNumber },
-                    { callability: false },
-                  )
-                }
-                else {
-                  port.write(commands.hangUpCall)
-                  const entry = await this.quectelsRepo.update(
-                    { serialPortNumber: portNumber },
-                    { callability: true },
-                  )
-                }
-              })
           }
 
           port.write(commands.enableGPS)
@@ -1359,7 +1435,6 @@ export class ProbService implements OnModuleInit {
             }
           }
         }
-        // #endregion
 
         ////////////////// FTP DL ////////////////////////
 
@@ -1370,7 +1445,7 @@ export class ProbService implements OnModuleInit {
               await sleep(300)
               port.write(commands.getCurrentAPN)
               this.logger.debug('getCurrentAPN')
-              this.ftpConnectionEstablishingProgressTime = (new Date()).getTime()
+              this.ftpDLConnectionEstablishingProgressTime = (new Date()).getTime()
             }
           }
         }
@@ -1381,13 +1456,13 @@ export class ProbService implements OnModuleInit {
               await sleep(300)
               port.write(commands.setMCIAPN)
               this.logger.debug('setMCIAPN')
-              this.ftpConnectionEstablishingProgressTime = (new Date()).getTime()
+              this.ftpDLConnectionEstablishingProgressTime = (new Date()).getTime()
             }
             else {
               await sleep(300)
               port.write(commands.getDataConnectivityStatus)
               this.logger.debug('getDataConnectivityStatus')
-              this.ftpConnectionEstablishingProgressTime = (new Date()).getTime()
+              this.ftpDLConnectionEstablishingProgressTime = (new Date()).getTime()
             }
           }
         }
@@ -1397,7 +1472,7 @@ export class ProbService implements OnModuleInit {
             await sleep(300)
             port.write(commands.getDataConnectivityStatus)
             this.logger.debug('getDataConnectivityStatus')
-            this.ftpConnectionEstablishingProgressTime = (new Date()).getTime()
+            this.ftpDLConnectionEstablishingProgressTime = (new Date()).getTime()
           }
         }
 
@@ -1406,7 +1481,7 @@ export class ProbService implements OnModuleInit {
             await sleep(300)
             port.write(commands.turnOnData)
             this.logger.debug('turnOnData')
-            this.ftpConnectionEstablishingProgressTime = (new Date()).getTime()
+            this.ftpDLConnectionEstablishingProgressTime = (new Date()).getTime()
           }
           else {
             await sleep(300)
@@ -1422,7 +1497,7 @@ export class ProbService implements OnModuleInit {
             await sleep(300)
             port.write(commands.getFtpStat)
             this.logger.debug('setFTPConfig')
-            this.ftpConnectionEstablishingProgressTime = (new Date()).getTime()
+            this.ftpDLConnectionEstablishingProgressTime = (new Date()).getTime()
           }
         }
 
@@ -1441,7 +1516,7 @@ export class ProbService implements OnModuleInit {
             await sleep(300)
             port.write(commands.getFtpStat)
             this.logger.debug('setFTPConfig')
-            this.ftpConnectionEstablishingProgressTime = (new Date()).getTime()
+            this.ftpDLConnectionEstablishingProgressTime = (new Date()).getTime()
           }
         }
 
@@ -1452,7 +1527,7 @@ export class ProbService implements OnModuleInit {
               await sleep(300)
               port.write(commands.openMCIFTPConnection)
               this.logger.debug('openMCIFTPConnection')
-              this.ftpConnectionEstablishingProgressTime = (new Date()).getTime()
+              this.ftpDLConnectionEstablishingProgressTime = (new Date()).getTime()
             }
           }
           // if (parsedResponse.getFtpStat.ftpStat === '2') {
@@ -1470,7 +1545,7 @@ export class ProbService implements OnModuleInit {
               this.ftpDLDFileTime = (new Date()).getTime()
               port.write(commands.getMCIFTPFile)
               this.logger.debug('getMCIFTPFile')
-              this.ftpConnectionEstablishingProgressTime = (new Date()).getTime()
+              this.ftpDLConnectionEstablishingProgressTime = (new Date()).getTime()
             }
           }
         }
@@ -1480,7 +1555,7 @@ export class ProbService implements OnModuleInit {
             await sleep(300)
             port.write(commands.setMCIFTPGETCURRENTDIRECTORY)
             this.logger.log('setMCIFTPGETCURRENTDIRECTORY')
-            this.ftpConnectionEstablishingProgressTime = (new Date()).getTime()
+            this.ftpDLConnectionEstablishingProgressTime = (new Date()).getTime()
           }
         }
 
@@ -1489,12 +1564,12 @@ export class ProbService implements OnModuleInit {
             await sleep(300)
             port.write(commands.getFtpStat)
             this.logger.log('getFtpStat')
-            this.ftpConnectionEstablishingProgressTime = (new Date()).getTime()
+            this.ftpDLConnectionEstablishingProgressTime = (new Date()).getTime()
           }
           else {
             await sleep(300)
             port.write(commands.setMCIFTPGETCURRENTDIRECTORY)
-            this.ftpConnectionEstablishingProgressTime = (new Date()).getTime()
+            this.ftpDLConnectionEstablishingProgressTime = (new Date()).getTime()
           }
         }
 
@@ -1503,7 +1578,7 @@ export class ProbService implements OnModuleInit {
             port.write(commands.getAllTechNetworkParameters)
             await sleep(200)
             port.write(commands.getMCIFTPDownloadedFileSize)
-            this.ftpConnectionEstablishingProgressTime = (new Date()).getTime()
+            this.ftpDLConnectionEstablishingProgressTime = (new Date()).getTime()
           }, 1000)
 
           this.ftpDLIntervalID[`interval_${intervalId}`] = true
@@ -1530,7 +1605,7 @@ export class ProbService implements OnModuleInit {
           port.write(commands.turnOffData)
 
           this.logger.log('Download completed - UFS storage cleared successfully - FTP Connection Closed - Data turned off')
-          this.ftpConnectionEstablishingProgressTime = (new Date()).getTime()
+          this.ftpDLConnectionEstablishingProgressTime = (new Date()).getTime()
 
           const toClearIntervalIds = Object.keys(this.ftpDLIntervalID).filter(key => this.ftpDLIntervalID[key]);
           for (const stringified_intervalId of toClearIntervalIds) {
@@ -1550,6 +1625,37 @@ export class ProbService implements OnModuleInit {
             )
           }
         }
+
+        // #endregion
+
+        ////////////////// FTP UL ////////////////////////
+
+        if (parsedResponse && parsedResponse['openFileToWrite']) {
+
+          const thisScenario = (await this.quectelsRepo.findOne({ where: { serialPortNumber: portNumber }, select: { activeScenario: true } })).activeScenario
+
+          if (thisScenario === scenarioName.FTP_UL_TH && parsedResponse.openFileToWrite.filehandle) {
+            this.ftpUploadFileHandle = Number(parsedResponse.openFileToWrite.filehandle)
+            port.write(`AT+QFWRITE=${parsedResponse.openFileToWrite.filehandle},50000000\r\n`)
+            await sleep(500)
+            const _50MBFILE = ONEMBFILE.repeat(51)
+            this.logger.log('write to file started.')
+            port.write(_50MBFILE)
+            // this.ftpUploadWriteFileInterval = setInterval(() => {
+            // }, 10)
+          }
+        }
+
+        if (parsedResponse && parsedResponse['writeToFile']) {
+
+          const thisScenario = (await this.quectelsRepo.findOne({ where: { serialPortNumber: portNumber }, select: { activeScenario: true } })).activeScenario
+
+          if (thisScenario === scenarioName.FTP_UL_TH && Number(parsedResponse.writeToFile.writtenLength) === 50000000) {
+            // clearInterval(this.ftpUploadWriteFileInterval)
+            port.write(`AT+QFCLOSE=${this.ftpUploadFileHandle}\r\n`)
+            this.logger.log('write to file ended.')
+          }
+        }
       });
 
       port.on('error', (err) => {
@@ -1563,21 +1669,32 @@ export class ProbService implements OnModuleInit {
 
   async allPortsInitializing() {
     let allEntries = await this.getModulesStatus()
+
     const toReinitiatePorts =
       serialPortInterfaces
         .filter(ports => ports.filter(port => allEntries.map(item => item.serialPortNumber).includes(port)).length < 2)
         .map(ports => ports.filter(port => !allEntries.map(item => item.serialPortNumber).includes(port)))
         .flat(5)
 
-    this.logger.verbose(`to initiate ports: ${toReinitiatePorts.toString()}`)
+    this.logger.verbose(
+      `to initiate ports: ${toReinitiatePorts.toString()}`,
+      JSON.stringify(allEntries.map(x => x.serialPortNumber)),
+      JSON.stringify(serialPortInterfaces
+        .filter(ports => ports.filter(port => allEntries.map(item => item.serialPortNumber).includes(port)).length < 2)),
+      JSON.stringify(serialPortInterfaces
+        .filter(ports => ports.filter(port => allEntries.map(item => item.serialPortNumber).includes(port)).length < 2)
+        .map(ports => ports.filter(port => !allEntries.map(item => item.serialPortNumber).includes(port))))
+    )
+
     if (toReinitiatePorts.length > 0) {
       for (const port of toReinitiatePorts) {
-        this.singlePortInitilizing(port)
+        this.logger.verbose(`port ${port} initializing...`)
+        await this.singlePortInitilizing(port)
       }
     }
 
     await new Promise(resolve => setTimeout(resolve, 10000))
-    return await this.getModulesStatus()
+    return (await this.getModulesStatus()).map(x => x.serialPortNumber)
   }
 
   async findAllModules() {
@@ -1657,7 +1774,7 @@ export class ProbService implements OnModuleInit {
             let allEntries = await this.getModulesStatus()
 
             if (allEntries.filter(entry => entry.simStatus === 'READY').length === 8) {
-              let scenarios = [scenarioName.GSMIdle, scenarioName.WCDMAIdle, scenarioName.LTEIdle, scenarioName.ALLTechIdle, scenarioName.GSMLongCall, scenarioName.WCDMALongCall, scenarioName.FTP_DL_TH, scenarioName.FTP_UP_TH]
+              let scenarios = [scenarioName.GSMIdle, scenarioName.WCDMAIdle, scenarioName.LTEIdle, scenarioName.ALLTechIdle, scenarioName.GSMLongCall, scenarioName.WCDMALongCall, scenarioName.FTP_DL_TH, scenarioName.FTP_UL_TH]
 
               const map = allEntries.reduce((p, c) => {
                 if (c.modelName === 'EP06' && scenarios.includes(scenarioName.WCDMAIdle)) {
@@ -1817,18 +1934,17 @@ export class ProbService implements OnModuleInit {
                   //     }
                   //   })
                   //   break;
-                  //#endregion
 
                   case scenarioName.FTP_DL_TH:
                     this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.clearUFSStorage)
-                    this.ftpConnectionEstablishingProgressTime = (new Date()).getTime()
+                    this.ftpDLConnectionEstablishingProgressTime = (new Date()).getTime()
                     await sleep(1000)
-                    this.ftpConnectionEstablishingProgressTime = (new Date()).getTime()
+                    this.ftpDLConnectionEstablishingProgressTime = (new Date()).getTime()
                     this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.allTech,
                       async () => {
-                        this.ftpConnectionEstablishingProgressTime = (new Date()).getTime()
+                        this.ftpDLConnectionEstablishingProgressTime = (new Date()).getTime()
                         await sleep(4000)
-                        this.ftpConnectionEstablishingProgressTime = (new Date()).getTime()
+                        this.ftpDLConnectionEstablishingProgressTime = (new Date()).getTime()
                         //////////////////////////////////////////////////////////////////////////////
                         setInterval(async () => {
                           const twentyFiveSecondsAgo = new Date((new Date()).getTime() - 25000)
@@ -1857,7 +1973,7 @@ export class ProbService implements OnModuleInit {
                             }
                           }
 
-                          const timeToLastAction = (new Date()).getTime() - this.ftpConnectionEstablishingProgressTime
+                          const timeToLastAction = (new Date()).getTime() - this.ftpDLConnectionEstablishingProgressTime
                           const activeIntervals = Object.keys(this.ftpDLIntervalID).filter(key => this.ftpDLIntervalID[key])
                           this.logger.error(`${JSON.stringify(activeIntervals)} | Try number: ${Object.keys(this.ftpDLIntervalID).length} | Time To Last Action: ${timeToLastAction} s`)
                           if (activeIntervals.length === 0 || timeToLastAction > 10000) {
@@ -1876,6 +1992,20 @@ export class ProbService implements OnModuleInit {
                         }, 10000)
                       })
                     break;
+                  //#endregion
+
+
+                  // case scenarioName.FTP_UL_TH:
+                  //   this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.clearUFSStorage)
+                  //   await sleep(1000)
+                  //   this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.clearUFSStorage)
+                  //   this.ftpULConnectionEstablishingProgressTime = (new Date()).getTime()
+                  //   await sleep(1000)
+                  //   this.ftpULConnectionEstablishingProgressTime = (new Date()).getTime()
+                  //   this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.allTech)
+                  //   await sleep(1000)
+                  //   this.serialPort[`ttyUSB${module.serialPortNumber}`].write(commands.openFileToWrite)
+                  //   break;
 
                   default:
                     break;

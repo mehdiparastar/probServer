@@ -13,6 +13,7 @@ import { ALLTECHIdle } from "./prob/entities/alltechIdle.entity";
 import { GSMLongCall } from "./prob/entities/gsmLongCall.entity";
 import { WCDMALongCall } from "./prob/entities/wcdmaLongCall.entity";
 import { FTPDL } from "./prob/entities/ftpDL.entity";
+import { FTPUL } from "./prob/entities/ftpUL.entity";
 
 dotenvConfig({ path: `.${process.env.NODE_ENV}.env` })
 
@@ -37,7 +38,8 @@ const config: TypeOrmModuleOptions = {
     ALLTECHIdle,
     GSMLongCall,
     WCDMALongCall,
-    FTPDL
+    FTPDL,
+    FTPUL
   ],
 };
 

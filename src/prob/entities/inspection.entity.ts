@@ -7,6 +7,7 @@ import { LTEIdle } from "./lteIdle.entity";
 import { GSMLongCall } from "./gsmLongCall.entity";
 import { WCDMALongCall } from "./wcdmaLongCall.entity";
 import { FTPDL } from "./ftpDL.entity";
+import { FTPUL } from "./ftpUL.entity";
 
 @Entity()
 export class Inspection {
@@ -39,6 +40,9 @@ export class Inspection {
 
     @OneToMany(() => FTPDL, (ftpDL) => ftpDL.inspection, { cascade: true })
     ftpDLs: FTPDL[];
+
+    @OneToMany(() => FTPUL, (ftpUL) => ftpUL.inspection, { cascade: true })
+    ftpULs: FTPUL[];
 
     @CreateDateColumn()
     createdAt?: Date;
