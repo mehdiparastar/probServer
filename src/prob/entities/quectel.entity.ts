@@ -9,13 +9,13 @@ export class Quectel {
     @Column({ unique: true })
     serialPortNumber: number
 
-    @Column()
+    @Column({ nullable: true })
     modelName: string
 
-    @Column()
+    @Column({ nullable: true })
     revision: string
 
-    @Column()
+    @Column({ nullable: true })
     fd: number
 
     @Column({ nullable: true })

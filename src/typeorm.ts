@@ -18,7 +18,7 @@ import { FTPUL } from "./prob/entities/ftpUL.entity";
 dotenvConfig({ path: `.${process.env.NODE_ENV}.env` })
 
 const config: TypeOrmModuleOptions = {
-  type: 'mysql',
+  type: 'mariadb',
   logging: false,
   host: `${process.env.MYSQL_HOST}`,
   port: Number(process.env.MYSQL_PORT),
@@ -40,7 +40,7 @@ const config: TypeOrmModuleOptions = {
     WCDMALongCall,
     FTPDL,
     FTPUL
-  ],
+  ],  
 };
 
 export default registerAs('typeorm', () => config)

@@ -23,6 +23,7 @@ export enum commands {
     getCallStatus = "AT+CPAS\r\n",
     setMCIAPN = 'AT+QICSGP=1,1,"mcinet","","",1\r\n',
     setMTNAPN = 'AT+QICSGP=1,1,"mtnirancell","","",1\r\n',
+    attachNetwork = 'AT+CGATT=1\r\n',
     turnOnData = 'AT+QIACT=1\r\n',
     turnOffData = 'AT+QIDEACT=1\r\n',
     getDataConnectivityStatus = 'AT+QIACT?\r\n',
@@ -37,7 +38,7 @@ export enum commands {
     setMCIFTPGETCURRENTDIRECTORY_ = 'AT+QFTPCWD="/home/mci"\r\n',
     setMCIFTPGETCURRENTDIRECTORY = 'AT+QFTPCWD="/home/amir/downloads"\r\n',
 
-    getMCIFTPFile = 'AT+QFTPGET="Autodesk.Maya.2020.4.x64.rar?1612964196","UFS:QuectelMSDocs.zip",0,60000000\r\n',
+    getMCIFTPFile = 'AT+QFTPGET="Autodesk.Maya.2020.4.x64.rar?1612964196","UFS:QuectelMSDocs.zip",0,57000000\r\n',
     getMCIFTPFile_ = 'AT+QFTPGET="./Upload/QuectelMSDocs.zip","UFS:QuectelMSDocs.zip"\r\n',
     getMCIFTPFile1 = 'AT+QFTPGET="../amir/downloads/Autodesk.Maya.2020.4.x64.rar?1612964196","COM:test.zip"\r\n',
     getMCIFTPDownloadedFileSize = 'AT+QFLST="UFS:QuectelMSDocs.zip"\r\n',
@@ -52,5 +53,8 @@ export enum commands {
     rebootModule = 'AT+CFUN=1,1\r\n',
 
     openFileToWrite = 'AT+QFOPEN="UFS:MEHDI.dat",0\r\n',
-    
+
+    mciPDPContext = 'AT+CGDCONT=1,"IP","mcinet"', //Define PDP context.
+    mciActivatePDP = 'AT+CGACT=1,1' //Activated PDP
+
 }
