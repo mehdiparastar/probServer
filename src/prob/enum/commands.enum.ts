@@ -24,6 +24,7 @@ export enum commands {
     setMCIAPN = 'AT+QICSGP=1,1,"mcinet","","",1\r\n',
     setMTNAPN = 'AT+QICSGP=1,1,"mtnirancell","","",1\r\n',
     attachNetwork = 'AT+CGATT=1\r\n',
+    dettachNetwork = 'AT+CGATT=0\r\n',
     turnOnData = 'AT+QIACT=1\r\n',
     turnOffData = 'AT+QIDEACT=1\r\n',
     getDataConnectivityStatus = 'AT+QIACT?\r\n',
@@ -55,6 +56,10 @@ export enum commands {
     openFileToWrite = 'AT+QFOPEN="UFS:MEHDI.dat",0\r\n',
 
     mciPDPContext = 'AT+CGDCONT=1,"IP","mcinet"', //Define PDP context.
-    mciActivatePDP = 'AT+CGACT=1,1' //Activated PDP
+    mciActivatePDP = 'AT+CGACT=1,1', //Activated PDP
+    checkConnectivity = 'AT+CGACT?\r\n',
+    moduleFullFunctionality = 'AT+CFUN=1\r\n',
+    setMCIConfigureAPN = 'AT+CGDCONT=1,"IP","mcinet"\r\n',
 
+    automaticNetworkSelectionMode = 'AT+COPS=0\r\n'
 }
