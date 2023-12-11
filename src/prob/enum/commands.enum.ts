@@ -39,13 +39,13 @@ export enum commands {
     setMCIFTPGETCURRENTDIRECTORY_ = 'AT+QFTPCWD="/home/mci"\r\n',
     setMCIFTPGETCURRENTDIRECTORY = 'AT+QFTPCWD="/home/amir/downloads"\r\n',
 
-    getMCIFTPFile = 'AT+QFTPGET="Autodesk.Maya.2020.4.x64.rar?1612964196","UFS:QuectelMSDocs.zip",0,57000000\r\n',
+    getMCIFTPFile = 'AT+QFTPGET="Autodesk.Maya.2020.4.x64.rar?1612964196","UFS:QuectelMSDocs.zip",0,50000000\r\n',
     getMCIFTPFile_ = 'AT+QFTPGET="./Upload/QuectelMSDocs.zip","UFS:QuectelMSDocs.zip"\r\n',
     getMCIFTPFile1 = 'AT+QFTPGET="../amir/downloads/Autodesk.Maya.2020.4.x64.rar?1612964196","COM:test.zip"\r\n',
     getMCIFTPDownloadedFileSize = 'AT+QFLST="UFS:QuectelMSDocs.zip"\r\n',
 
     getCurrentAPN = 'AT+CGDCONT?\r\n',
-    getFtpStat = 'AT+QFTPSTAT\r\n',
+    getFtpStat = 'AT+QFTPSTAT;\r\n',
     closeFtpConn = 'AT+QFTPCLOSE\r\n',
     getFTPCurrentDirectory = 'AT+QFTPPWD\r\n',
     clearUFSStorage = 'AT+QFDEL="*"\r\n',
@@ -61,5 +61,10 @@ export enum commands {
     moduleFullFunctionality = 'AT+CFUN=1\r\n',
     setMCIConfigureAPN = 'AT+CGDCONT=1,"IP","mcinet"\r\n',
 
-    automaticNetworkSelectionMode = 'AT+COPS=0\r\n'
+    automaticNetworkSelectionMode = 'AT+COPS=0\r\n',
+
+    fullTCPWindowSize = 'AT+QCFG="tcp/windowsize",0,100\r\n',
+
+    resetPacketDataCounter = 'AT+QGDCNT=0\r\n',
+    getPacketDataCounter = 'AT+QGDCNT?\r\n'
 }
