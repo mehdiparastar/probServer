@@ -5,6 +5,7 @@ export enum commands {
     getSimStatus = 'AT+CPIN?\r\n',
     enableGPS = 'AT+QGPS=1\r\n',
     disableGPS = 'AT+QGPSEND\r\n',
+    gpsStatus = 'AT+QGPS?\r\n',
     getCurrentLoc = 'AT+QGPSLOC=2\r\n',
     lockGSM = 'AT+QCFG="nwscanmode",1\r\n',
     lockWCDMA = 'AT+QCFG="nwscanmode",2\r\n',
@@ -61,6 +62,7 @@ export enum commands {
     moduleFullFunctionality = 'AT+CFUN=1\r\n',
     setMCIConfigureAPN = 'AT+CGDCONT=1,"IP","mcinet"\r\n',
 
+    getCurrentNetwork = 'AT+COPS?\r\n',
     automaticNetworkSelectionMode = 'AT+COPS=0\r\n',
 
     fullTCPWindowSize = 'AT+QCFG="tcp/windowsize",0,100\r\n',

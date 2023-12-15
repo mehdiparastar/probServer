@@ -14,6 +14,7 @@ import { GSMLongCall } from "./prob/entities/gsmLongCall.entity";
 import { WCDMALongCall } from "./prob/entities/wcdmaLongCall.entity";
 import { FTPDL } from "./prob/entities/ftpDL.entity";
 import { FTPUL } from "./prob/entities/ftpUL.entity";
+import { MSData } from "./prob/entities/ms-data.entity";
 
 dotenvConfig({ path: `.${process.env.NODE_ENV}.env` })
 
@@ -39,7 +40,8 @@ const config: TypeOrmModuleOptions = {
     GSMLongCall,
     WCDMALongCall,
     FTPDL,
-    FTPUL
+    FTPUL,
+    MSData
   ],  
 };
 

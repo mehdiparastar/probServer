@@ -11,59 +11,59 @@ export class ProbController {
     private readonly probService: ProbService,
   ) { }
 
-  @Post()
-  create(@Body() createProbDto: CreateProbDto) {
-    return this.probService.create(createProbDto);
-  }
+  // @Post()
+  // create(@Body() createProbDto: CreateProbDto) {
+  //   return this.probService.create(createProbDto);
+  // }
 
-  @Get()
-  findAllModeles() {
-    return this.probService.findAllModules();
-  }
+  // @Get()
+  // findAllModeles() {
+  //   return this.probService.findAllModules();
+  // }
 
-  @Post('run-at-command')
-  runATCommand(@Body() body: ATCommandDto) {
-    return this.probService.runATCommand(Number(body.portNumber), body.command)
-  }
+  // @Post('run-at-command')
+  // runATCommand(@Body() body: ATCommandDto) {
+  //   return this.probService.runATCommand(Number(body.portNumber), body.command)
+  // }
 
-  @Get('port-initializing')
-  portInitializing() {
-    // return this.probService.firstINIT()
-    return this.probService.allPortsInitializing()
-  }
+  // @Get('port-initializing')
+  // portInitializing() {
+  //   // return this.probService.firstINIT()
+  //   return this.probService.allPortsInitializing()
+  // }
 
-  @Get('get-modules-status')
-  getModelesStatus() {
-    return this.probService.getModulesStatus()
-  }
+  // @Get('get-modules-status')
+  // getModelesStatus() {
+  //   return this.probService.getModulesStatus()
+  // }
 
-  @Get('enableGPS')
-  async enablingGPS() {
-    return await this.probService.enablingGPS()
-  }
+  // @Get('enableGPS')
+  // async enablingGPS() {
+  //   return await this.probService.enablingGPS()
+  // }
 
-  @Post('start')
-  start(@Body() body: StartLogDto) {
-    return this.probService.startLog(body.type, body.code, body.expertId)
-  }
+  // @Post('start')
+  // start(@Body() body: StartLogDto) {
+  //   return this.probService.startLog(body.type, body.code, body.expertId)
+  // }
 
-  @Post('pause')
-  pause() {
-    return this.probService.pauseLog()
-  }
+  // @Post('pause')
+  // pause() {
+  //   return this.probService.pauseLog()
+  // }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.probService.findOne(+id);
-  }
+  // @Get(':id')
+  // findOne(@Param('id') id: string) {
+  //   return this.probService.findOne(+id);
+  // }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateProbDto: UpdateProbDto) {
-    return this.probService.update(+id, updateProbDto);
-  }
+  // @Patch(':id')
+  // update(@Param('id') id: string, @Body() updateProbDto: UpdateProbDto) {
+  //   return this.probService.update(+id, updateProbDto);
+  // }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.probService.remove(+id);
-  }
+  // @Delete(':id')
+  // remove(@Param('id') id: string) {
+  //   return this.probService.remove(+id);
+  // }
 }

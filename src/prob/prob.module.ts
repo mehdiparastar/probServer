@@ -14,6 +14,9 @@ import { GSMLongCall } from './entities/gsmLongCall.entity';
 import { WCDMALongCall } from './entities/wcdmaLongCall.entity';
 import { FTPDL } from './entities/ftpDL.entity';
 import { FTPUL } from './entities/ftpUL.entity';
+import { GPSService } from './gps.service';
+import { MSData } from './entities/ms-data.entity';
+import { MSService } from './ms.service'
 
 @Module({
   imports: [
@@ -29,12 +32,15 @@ import { FTPUL } from './entities/ftpUL.entity';
       WCDMALongCall,
       Inspection,
       FTPDL,
-      FTPUL
+      FTPUL,
+      MSData
     ])
   ],
   controllers: [ProbController],
   providers: [
     ProbService,
+    GPSService,
+    MSService
   ],
 })
 export class ProbModule { }
