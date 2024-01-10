@@ -1,5 +1,6 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { scenarioName } from "../enum/scenarioName.enum";
+import { techType } from "../enum/techType.enum";
 
 @Entity()
 export class MSData {
@@ -30,8 +31,8 @@ export class MSData {
     @Column({ default: false })
     isGPS?: boolean
 
-    @Column({ nullable: true, default: 'allTech' })
-    lockStatus?: string
+    @Column({ nullable: true, default: techType.allTech })
+    lockStatus?: techType
 
     @Column({ nullable: true })
     callability?: boolean

@@ -17,6 +17,7 @@ import { FTPUL } from './entities/ftpUL.entity';
 import { GPSService } from './gps.service';
 import { MSData } from './entities/ms-data.entity';
 import { MSService } from './ms.service'
+import { GSMIdleService } from './gsmIdle.service';
 
 @Module({
   imports: [
@@ -40,7 +41,8 @@ import { MSService } from './ms.service'
   providers: [
     ProbService,
     GPSService,
-    MSService
+    MSService,
+    GSMIdleService
   ],
 })
 export class ProbModule { }

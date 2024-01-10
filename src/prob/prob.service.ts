@@ -13,8 +13,10 @@ import { Quectel } from './entities/quectel.entity';
 import { User } from './entities/user.entity';
 import { WCDMAIdle } from './entities/wcdmaIdle.entity';
 import { WCDMALongCall } from './entities/wcdmaLongCall.entity';
-import { GPSService } from './gps.service';
 import { MSService } from './ms.service';
+import { GPSService } from './gps.service';
+import { GSMIdleService } from './gsmIdle.service';
+import { MSData } from './entities/ms-data.entity';
 
 
 const sleep = async (milisecond: number) => {
@@ -38,8 +40,10 @@ export class ProbService implements OnModuleInit {
     @InjectRepository(WCDMALongCall) private wcdmaLongCallRepo: Repository<WCDMALongCall>,
     @InjectRepository(FTPDL) private ftpDLRepo: Repository<FTPDL>,
     @InjectRepository(FTPUL) private ftpULRepo: Repository<FTPUL>,
+    @InjectRepository(MSData) private msDataRepo: Repository<MSData>,
+    private msService: MSService,
     private gpsService: GPSService,
-    private msService: MSService
+    private gsmIdleService: GSMIdleService
   ) {
   }
 
@@ -58,8 +62,19 @@ export class ProbService implements OnModuleInit {
     await this.quectelsRepo.query(`delete from ${this.quectelsRepo.metadata.tableName}`);
     await this.inspectionsRepo.query(`delete from ${this.inspectionsRepo.metadata.tableName}`);
     await this.gpsDataRepo.query(`delete from ${this.gpsDataRepo.metadata.tableName}`);
+    await this.msDataRepo.query(`delete from ${this.msDataRepo.metadata.tableName}`);
 
-    // await this.gpsService.portsInitializing()
+    this.logger.error('------------------- start ms service -----------------------')
     await this.msService.portsInitializing()
+    this.logger.error('------------------- end ms service -----------------------')
+
+    this.logger.error('------------------- start gps service -----------------------')
+    await this.gpsService.portsInitializing()
+    this.logger.error('------------------- end gps service -----------------------')
+
+    this.logger.error('------------------- start gsm idle service -----------------------')
+    await this.gsmIdleService.portsInitializing(2)
+    this.logger.error('------------------- end gsm idle service -----------------------')
+
   }
 }

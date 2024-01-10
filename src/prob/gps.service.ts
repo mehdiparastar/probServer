@@ -4,6 +4,8 @@ import { GPSData } from "./entities/gps-data.entity";
 import { Repository } from "typeorm";
 import { SerialPort } from "serialport";
 import { commands } from "./enum/commands.enum";
+import { MSData } from "./entities/ms-data.entity";
+import { scenarioName } from "./enum/scenarioName.enum";
 
 
 function convertDMStoDD(degrees: string, direction: string) {
@@ -21,9 +23,12 @@ export class GPSService {
     private dmPorts = [2, 6, 10, 14, 18, 22, 26, 30]
     private selectedGPSPort: number
     private disabledGPSPorts: number[] = []
+    private gpsPort: number
+    private initializingEnd: boolean = false
 
     constructor(
-        @InjectRepository(GPSData) private gpsDataRepo: Repository<GPSData>
+        @InjectRepository(GPSData) private gpsDataRepo: Repository<GPSData>,
+        @InjectRepository(MSData) private msDataRepo: Repository<MSData>,
     ) { }
 
     // Function to parse GGA sentence
@@ -72,9 +77,9 @@ export class GPSService {
                 port.on('data', async (data) => {
                     const response = data.toString()
 
-                    if (response.indexOf('GPS') >= 0) {
-                        this.logger.log(JSON.stringify(response))
-                    }
+                    // if (response.indexOf('GPS') >= 0) {
+                    //     this.logger.log(JSON.stringify(response))
+                    // }
 
                     if (response.indexOf('+QGPS: 1') >= 0) {
                         if (this.nmeaPorts[this.dmPorts.indexOf(portNumber)] !== this.selectedGPSPort) {
@@ -134,7 +139,37 @@ export class GPSService {
                                             this.logger.error(ex.message)
                                         }
                                     }
-                                    this.logger.warn(`recieved GPS data on Port ${portNumber}: ${ggaData['latitude']}, ${ggaData['latitude']} or ${rmcData['latitude']}, ${rmcData['latitude']}`)
+
+                                    // this.logger.warn(`recieved GPS data on Port ${portNumber}: ${ggaData['latitude']}, ${ggaData['latitude']} or ${rmcData['latitude']}, ${rmcData['latitude']}`)
+
+                                    if (this.gpsPort === undefined) {
+                                        this.gpsPort = portNumber
+                                        const dmPortNumberOfGpsPort = this.dmPorts[this.nmeaPorts.indexOf(this.gpsPort)]
+                                        const dmPortsExceptMappedGpsPort = this.dmPorts.filter(p => p !== dmPortNumberOfGpsPort)
+
+                                        const update = await this.msDataRepo.update({ dmPortNumber: dmPortNumberOfGpsPort }, { isGPS: true })
+                                        this.logger.warn(`port ${this.gpsPort} set as gps port.`)
+
+                                        const gsmIdleScenario = await this.msDataRepo.update({ dmPortNumber: dmPortNumberOfGpsPort }, { activeScenario: scenarioName.GSMIdle })
+
+                                        const wcdmaIdleScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[0] }, { activeScenario: scenarioName.WCDMAIdle })
+
+                                        const lteIdleScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[1] }, { activeScenario: scenarioName.LTEIdle })
+
+                                        const allTechIdleScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[2] }, { activeScenario: scenarioName.ALLTechIdle })
+
+                                        const gsmLongCallScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[3] }, { activeScenario: scenarioName.GSMLongCall })
+
+                                        const wcdmaLongCallScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[4] }, { activeScenario: scenarioName.WCDMALongCall })
+
+                                        const ftpDLScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[5] }, { activeScenario: scenarioName.FTP_DL_TH })
+
+                                        const ftpUlScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[6] }, { activeScenario: scenarioName.FTP_UL_TH })
+
+                                        this.logger.warn(`all scenarios set.`)
+                                        this.initializingEnd = true
+
+                                    }
                                 }
                                 else {
                                     for (const p of this.nmeaPorts) {
@@ -157,5 +192,24 @@ export class GPSService {
             }
         }
 
+        await this.waitForEndOfInitializing()
+
+    }
+
+
+    waitForEndOfInitializing = (timeout = 1000) => {
+        return new Promise((resolve) => {
+            const checkCondition = () => {
+                const cond = this.initializingEnd
+
+                if (cond) {
+                    resolve(1);
+                } else {
+                    setTimeout(checkCondition, timeout); // Adjust the interval as needed
+                }
+            };
+
+            checkCondition();
+        });
     }
 }
