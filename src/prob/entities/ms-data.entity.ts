@@ -31,7 +31,7 @@ export class MSData {
     @Column({ default: false })
     isGPS?: boolean
 
-    @Column({ nullable: true, default: techType.allTech })
+    @Column({ nullable: true, default: techType.alltech })
     lockStatus?: techType
 
     @Column({ nullable: true })

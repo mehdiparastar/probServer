@@ -17,7 +17,12 @@ import { FTPUL } from './entities/ftpUL.entity';
 import { GPSService } from './gps.service';
 import { MSData } from './entities/ms-data.entity';
 import { MSService } from './ms.service'
-import { GSMIdleService } from './gsmIdle.service';
+import { GSMIdleService } from './idle.gsm.service';
+import { WCDMAIdleService } from './idle.wcdma.service';
+import { LTEIdleService } from './idle.lte.service';
+import { ALLTECHIdleService } from './idle.allTech.service';
+import { GSMLongCallService } from './longCall.gsm.service';
+import { WCDMALongCallService } from './longCall.wcdma.service';
 
 @Module({
   imports: [
@@ -42,7 +47,12 @@ import { GSMIdleService } from './gsmIdle.service';
     ProbService,
     GPSService,
     MSService,
-    GSMIdleService
+    GSMIdleService,
+    WCDMAIdleService,
+    LTEIdleService,
+    ALLTECHIdleService,
+    GSMLongCallService,
+    WCDMALongCallService
   ],
 })
 export class ProbModule { }

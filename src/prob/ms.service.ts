@@ -5,7 +5,6 @@ import { Repository } from "typeorm";
 import { SerialPort } from "serialport";
 import { commands } from "./enum/commands.enum";
 import { MSData } from "./entities/ms-data.entity";
-// import { GPSService } from './gps.service';
 
 const correctPattern = {
     'moduleInformation': /.*Quectel\r\n(\w+)\r\nRevision: (\w+)\r\n.*/,
@@ -17,6 +16,7 @@ const correctPattern = {
     'moduleFullFunctionality': /.*CFUN=1.*OK.*/,
     'turnOffData': /.*QIDEACT=1.*OK.*/,
     'currentNetwork': /.*COPS.*"([^"]+)".*/,
+    'lockALLTECH': /AT\+QCFG="nwscanmode",0\r\r\nOK\r\n/,
 }
 
 const sleep = async (milisecond: number) => {
@@ -37,11 +37,11 @@ export class MSService {
     private moduleFullFunctionality: { [key: string]: boolean } = {}
     private turnOffData: { [key: string]: boolean } = {}
     private currentNetwork: { [key: string]: boolean } = {}
+    private allTechMode: { [key: string]: boolean } = {}
     private dmPortIntervalId: { [key: string]: NodeJS.Timeout } = {}
 
     constructor(
         @InjectRepository(MSData) private msDataRepo: Repository<MSData>,
-        // private gpsService: GPSService,
     ) { }
 
     async portsInitializing() {
@@ -80,7 +80,6 @@ export class MSService {
 
         this.logger.warn(`data stored as: ${JSON.stringify(insert.identifiers.length)}`)
 
-        // await this.gpsService.portsInitializing()
     }
 
     async getMSData(dmPort: number) {
@@ -127,6 +126,10 @@ export class MSService {
                     port.write(commands.getCurrentNetwork)
                     this.logger.log('getCurrentNetwork')
                 }
+                if (!this.allTechMode[`ttyUSB${dmPort}`]) {
+                    port.write(commands.lockALLTECH)
+                    this.logger.log('allTechMode')
+                }
                 this.logger.log(`port ${dmPort} have been initialized.`)
             }
         }
@@ -160,6 +163,7 @@ export class MSService {
                     (JSON.stringify(response).indexOf('QIDEACT=1') >= 0 && JSON.stringify(response).indexOf('OK') >= 0) ||
                     (JSON.stringify(response).indexOf('QIDEACT=1') >= 0 && JSON.stringify(response).slice(-2) === 'r"')
                 const currentNetworkMatch = response.match(correctPattern.currentNetwork)
+                const allTechModeMatch = response.match(correctPattern.lockALLTECH)
 
                 if (moduleInformationMatch) {
                     this.moduleInfo[`ttyUSB${dmPort}`] = { ...this.moduleInfo[`ttyUSB${dmPort}`], modelName: moduleInformationMatch[1], revision: moduleInformationMatch[2] }
@@ -213,6 +217,10 @@ export class MSService {
                         port.write(commands.automaticNetworkSelectionMode)
                     }
                 }
+
+                if (allTechModeMatch) {
+                    this.allTechMode[`ttyUSB${dmPort}`] = !!allTechModeMatch
+                }
             })
 
             port.on('error', (err) => {
@@ -234,6 +242,7 @@ export class MSService {
             !!this.moduleFullFunctionality[`ttyUSB${dmPort}`] &&
             !!this.turnOffData[`ttyUSB${dmPort}`] &&
             !!this.currentNetwork[`ttyUSB${dmPort}`] &&
+            !!this.allTechMode[`ttyUSB${dmPort}`] &&
             !!this.dmPortIntervalId[`ttyUSB${dmPort}`]
         )
     }

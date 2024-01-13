@@ -6,6 +6,7 @@ import { GSMLongCall } from "./gsmLongCall.entity";
 import { WCDMALongCall } from "./wcdmaLongCall.entity";
 import { FTPDL } from "./ftpDL.entity";
 import { FTPUL } from "./ftpUL.entity";
+import { ALLTECHIdle } from "./alltechIdle.entity";
 
 @Entity()
 export class GPSData {
@@ -35,6 +36,9 @@ export class GPSData {
 
     @OneToMany(() => LTEIdle, (lteIdle) => lteIdle.location, { cascade: true, nullable: true }) // specify inverse side as a second parameter
     lteIdleSamples: LTEIdle[]
+
+    @OneToMany(() => ALLTECHIdle, (alltechIdle) => alltechIdle.location, { cascade: true, nullable: true }) // specify inverse side as a second parameter
+    alltechIdleSamples: ALLTECHIdle[]
 
     @OneToMany(() => GSMLongCall, (gsmLongCall) => gsmLongCall.location, { cascade: true, nullable: true })
     gsmLongCallSamples: GSMLongCall[];

@@ -1,0 +1,198 @@
+import { Injectable, Logger } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
+import { SerialPort } from "serialport";
+import { commands } from "./enum/commands.enum";
+import { MSData } from "./entities/ms-data.entity";
+import { techType } from "./enum/techType.enum";
+import { LTEIdle } from './entities/lteIdle.entity';
+import { Inspection } from "./entities/inspection.entity";
+import { GPSData } from './entities/gps-data.entity';
+
+const correctPattern = {
+    'lockLTE': /AT\+QCFG="nwscanmode",3\r\r\nOK\r\n/,
+    'getLTENetworkParameters': /.*\+QENG: "servingcell","(-?\w+)","(-?\w+)","(-?\w+)",(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-w+?|-?).*/,
+}
+
+const sleep = async (milisecond: number) => {
+    await new Promise(resolve => setTimeout(resolve, milisecond))
+}
+
+@Injectable()
+export class LTEIdleService {
+    private readonly logger = new Logger(LTEIdleService.name);
+    private initializedPorts: { [key: string]: SerialPort } = {}
+    private lockStatus: { [key: string]: techType } = {}
+    private moduleIMEI: { [key: string]: string } = {}
+    private simIMSI: { [key: string]: string } = {}
+    private dmPortIntervalId: { [key: string]: NodeJS.Timeout } = {}
+    private initializingEnd: boolean = false
+
+    constructor(
+        @InjectRepository(MSData) private msDataRepo: Repository<MSData>,
+        @InjectRepository(LTEIdle) private lteIdlesRepo: Repository<LTEIdle>,
+        @InjectRepository(GPSData) private gpsDataRepo: Repository<GPSData>,
+    ) { }
+
+    async portsInitializing(dmPort: number, inspection: Inspection) {
+        const msData = await this.msDataRepo.findOne({ where: { dmPortNumber: dmPort } })
+
+        this.moduleIMEI[`ttyUSB${dmPort}`] = msData.IMEI
+        this.simIMSI[`ttyUSB${dmPort}`] = msData.IMSI
+
+        this.dmPortIntervalId[`ttyUSB${dmPort}`] = setInterval(
+            async () => {
+                const cond = this.checkPortTrueInit(dmPort)
+
+                if (cond) {
+                    clearInterval(this.dmPortIntervalId[`ttyUSB${dmPort}`])
+                    this.logger.debug(`port ${dmPort} initialized successfully then go to itration stage.`)
+                    this.msItrationDuty(dmPort)
+
+                    this.initializingEnd = true
+                }
+                else {
+                    this.logger.log(`try to initialize port ${dmPort}`)
+                    this.getMSData(dmPort, inspection)
+                }
+            },
+            2000)
+
+        await sleep(5000)
+
+        await this.waitForEndOfInitializing()
+
+    }
+
+    async getMSData(dmPort: number, inspection: Inspection) {
+        if (this.initializedPorts[`ttyUSB${dmPort}`]) {
+            if (!this.initializedPorts[`ttyUSB${dmPort}`].isOpen) {
+                this.initializedPorts[`ttyUSB${dmPort}`].open()
+                this.logger.warn(`port ${dmPort} reOpened.`)
+            }
+            else {
+                const port = this.initializedPorts[`ttyUSB${dmPort}`]
+                if (!this.lockStatus[`ttyUSB${dmPort}`]) {
+                    port.write(commands.lockLTE)
+                }
+
+                this.logger.log(`port ${dmPort} have been initialized.`)
+            }
+        }
+        else {
+            const port = new SerialPort({ path: `/dev/ttyUSB${dmPort}`, baudRate: 115200 });
+
+            port.on('open', async () => {
+                this.logger.log(`port ${dmPort} opened.`)
+            })
+
+            port.on('data', async (data) => {
+                const response = data.toString()
+
+                // this.logger.log(`port ${dmPort} : ${JSON.stringify(response)}`)
+
+                const lockLTEMatch = response.match(correctPattern.lockLTE)
+
+                if (lockLTEMatch) {
+                    this.lockStatus[`ttyUSB${dmPort}`] = techType.lte
+                    const insert = await this.msDataRepo.update(
+                        { IMEI: this.moduleIMEI[`ttyUSB${dmPort}`] },
+                        { lockStatus: this.lockStatus[`ttyUSB${dmPort}`] }
+                    )
+                    this.logger.warn(`ms data lock status updated. ${JSON.stringify(insert.raw)}`)
+                }
+
+                const getLTENetworkParametersMatch = response.match(correctPattern.getLTENetworkParameters)
+
+                if (getLTENetworkParametersMatch) {
+                    const lteData = {
+                        'tech': getLTENetworkParametersMatch[2].trim(),
+                        'is_tdd': getLTENetworkParametersMatch[3].trim(),
+                        'mcc': getLTENetworkParametersMatch[4].trim(),
+                        'mnc': getLTENetworkParametersMatch[5].trim(),
+                        'cellid': getLTENetworkParametersMatch[6].trim(),
+                        'pcid': getLTENetworkParametersMatch[7].trim(),
+                        'earfcn': getLTENetworkParametersMatch[8].trim(),
+                        'freq_band_ind': getLTENetworkParametersMatch[9].trim(),
+                        'ul_bandwidth': getLTENetworkParametersMatch[10].trim(),
+                        'dl_bandwidth': getLTENetworkParametersMatch[11].trim(),
+                        'tac': getLTENetworkParametersMatch[12].trim(),
+                        'rsrp': getLTENetworkParametersMatch[13].trim(),
+                        'rsrq': getLTENetworkParametersMatch[14].trim(),
+                        'rssi': getLTENetworkParametersMatch[15].trim(),
+                        'sinr': getLTENetworkParametersMatch[16].trim(),
+                        'srxlev': getLTENetworkParametersMatch[17].trim(),
+                    }
+
+
+                    const location = await this.gpsDataRepo
+                        .createQueryBuilder('gps_data')
+                        .where('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt)) <= 2000000') // One second has 1,000,000 microseconds
+                        .orderBy('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt))', 'ASC')
+                        .setParameter('desiredCreatedAt', new Date())
+                        .getOne();
+
+                    const newEntry = this.lteIdlesRepo.create({
+                        tech: lteData.tech,
+                        is_tdd: lteData.is_tdd,
+                        mcc: lteData.mcc,
+                        mnc: lteData.mnc,
+                        cellid: lteData.cellid,
+                        pcid: lteData.pcid,
+                        earfcn: lteData.earfcn,
+                        freq_band_ind: lteData.freq_band_ind,
+                        ul_bandwidth: lteData.ul_bandwidth,
+                        dl_bandwidth: lteData.dl_bandwidth,
+                        tac: lteData.tac,
+                        rsrp: lteData.rsrp,
+                        rsrq: lteData.rsrq,
+                        rssi: lteData.rssi,
+                        sinr: lteData.sinr,
+                        srxlev: lteData.srxlev,
+                        inspection: inspection,
+                        location: location
+                    })
+                    const save = await this.lteIdlesRepo.save(newEntry)
+                }
+
+            })
+
+            port.on('error', (err) => {
+                this.logger.error(`Error on port ${dmPort}: ${err.message}`);
+            });
+
+            this.initializedPorts[`ttyUSB${dmPort}`] = port
+        }
+    }
+
+    async msItrationDuty(dmPort: number, interval: number = 1000) {
+        const port = this.initializedPorts[`ttyUSB${dmPort}`]
+
+        setInterval(() => {
+            port.write(commands.getLTENetworkParameters)
+        }, interval)
+    }
+
+    checkPortTrueInit(dmPort: number) {
+        return (
+            !!this.lockStatus[`ttyUSB${dmPort}`] &&
+            !!this.dmPortIntervalId[`ttyUSB${dmPort}`]
+        )
+    }
+
+    waitForEndOfInitializing = (timeout = 1000) => {
+        return new Promise((resolve) => {
+            const checkCondition = () => {
+                const cond = this.initializingEnd
+
+                if (cond) {
+                    resolve(1);
+                } else {
+                    setTimeout(checkCondition, timeout); // Adjust the interval as needed
+                }
+            };
+
+            checkCondition();
+        });
+    }
+}

@@ -8,6 +8,7 @@ import { GSMLongCall } from "./gsmLongCall.entity";
 import { WCDMALongCall } from "./wcdmaLongCall.entity";
 import { FTPDL } from "./ftpDL.entity";
 import { FTPUL } from "./ftpUL.entity";
+import { ALLTECHIdle } from "./alltechIdle.entity";
 
 @Entity()
 export class Inspection {
@@ -31,6 +32,9 @@ export class Inspection {
 
     @OneToMany(() => LTEIdle, (lteIdle) => lteIdle.inspection, { cascade: true })
     lteIdles: LTEIdle[];
+
+    @OneToMany(() => ALLTECHIdle, (alltechIdle) => alltechIdle.inspection, { cascade: true })
+    alltechIdles: ALLTECHIdle[];
 
     @OneToMany(() => GSMLongCall, (gsmLongCall) => gsmLongCall.inspection, { cascade: true })
     gsmLongCalls: GSMLongCall[];

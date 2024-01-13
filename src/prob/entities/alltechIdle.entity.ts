@@ -156,10 +156,10 @@ export class ALLTECHIdle {
 
     //////////////////////////////// All //////////////////////////////////////
 
-    @ManyToOne(() => Inspection, (inspection) => inspection.gsmIdles, { nullable: false })
+    @ManyToOne(() => Inspection, (inspection) => inspection.alltechIdles, { nullable: false })
     inspection: Inspection;
 
-    @ManyToOne(() => GPSData, (location) => location.gsmIdleSamples, { nullable: true })
+    @ManyToOne(() => GPSData, (location) => location.alltechIdleSamples, { nullable: true })
     location: GPSData
 
     @CreateDateColumn()

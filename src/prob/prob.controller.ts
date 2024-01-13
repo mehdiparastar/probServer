@@ -47,6 +47,11 @@ export class ProbController {
   //   return this.probService.startLog(body.type, body.code, body.expertId)
   // }
 
+  @Post('start')
+  startDT(@Body() body: StartLogDto) {
+    return this.probService.startDT(body.type, body.code, body.expertId)
+  }
+
   // @Post('pause')
   // pause() {
   //   return this.probService.pauseLog()

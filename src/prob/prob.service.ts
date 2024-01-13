@@ -15,8 +15,14 @@ import { WCDMAIdle } from './entities/wcdmaIdle.entity';
 import { WCDMALongCall } from './entities/wcdmaLongCall.entity';
 import { MSService } from './ms.service';
 import { GPSService } from './gps.service';
-import { GSMIdleService } from './gsmIdle.service';
+import { GSMIdleService } from './idle.gsm.service';
 import { MSData } from './entities/ms-data.entity';
+import { logLocationType } from './enum/logLocationType.enum';
+import { WCDMAIdleService } from './idle.wcdma.service';
+import { LTEIdleService } from './idle.lte.service';
+import { ALLTECHIdleService } from './idle.allTech.service';
+import { GSMLongCallService } from './longCall.gsm.service';
+import { WCDMALongCallService } from './longCall.wcdma.service';
 
 
 const sleep = async (milisecond: number) => {
@@ -43,7 +49,12 @@ export class ProbService implements OnModuleInit {
     @InjectRepository(MSData) private msDataRepo: Repository<MSData>,
     private msService: MSService,
     private gpsService: GPSService,
-    private gsmIdleService: GSMIdleService
+    private gsmIdleService: GSMIdleService,
+    private wcdmaIdleService: WCDMAIdleService,
+    private lteIdleService: LTEIdleService,
+    private alltechIdleService: ALLTECHIdleService,
+    private gsmLongCallService: GSMLongCallService,
+    private wcdmaLongCallService: WCDMALongCallService,
   ) {
   }
 
@@ -72,9 +83,49 @@ export class ProbService implements OnModuleInit {
     await this.gpsService.portsInitializing()
     this.logger.error('------------------- end gps service -----------------------')
 
-    this.logger.error('------------------- start gsm idle service -----------------------')
-    await this.gsmIdleService.portsInitializing(2)
-    this.logger.error('------------------- end gsm idle service -----------------------')
-
   }
+
+  async startDT(type: logLocationType, code: string, expertId: number) {
+    const expert = await this.usersRepo.findOne({ where: { id: expertId } })
+
+    if (expert) {
+      const newEntry = this.inspectionsRepo.create({
+        type: type,
+        code: code,
+        expert: expert
+      })
+      const inspection = await this.inspectionsRepo.save(newEntry)
+
+      this.logger.error('------------------- start gsm idle service -----------------------')
+      await this.gsmIdleService.portsInitializing(2, inspection)
+      this.logger.error('------------------- end gsm idle service -----------------------')
+
+      this.logger.error('------------------- start wcdma idle service -----------------------')
+      await this.wcdmaIdleService.portsInitializing(6, inspection)
+      this.logger.error('------------------- end wcdma idle service -----------------------')
+
+      this.logger.error('------------------- start lte idle service -----------------------')
+      await this.lteIdleService.portsInitializing(10, inspection)
+      this.logger.error('------------------- end lte idle service -----------------------')
+
+      this.logger.error('------------------- start alltech idle service -----------------------')
+      await this.alltechIdleService.portsInitializing(14, inspection)
+      this.logger.error('------------------- end alltech idle service -----------------------')
+
+      this.logger.error('------------------- start gsm LongCall service -----------------------')
+      await this.gsmLongCallService.portsInitializing(18, inspection)
+      this.logger.error('------------------- end gsm LongCall service -----------------------')
+
+      this.logger.error('------------------- start wcdma LongCall service -----------------------')
+      await this.wcdmaLongCallService.portsInitializing(22, inspection)
+      this.logger.error('------------------- end wcdma LongCall service -----------------------')
+
+      return { msg: `DT started successfully.` }
+
+    }
+    else {
+      return { msg: `provided userId doesnt exist.` }
+    }
+  }
+
 }
