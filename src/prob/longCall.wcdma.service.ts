@@ -39,7 +39,7 @@ export class WCDMALongCallService {
     ) { }
 
     async portsInitializing(dmPort: number, inspection: Inspection) {
-        const msData = await this.msDataRepo.findOne({ where: { dmPortNumber: dmPort } })
+        const msData = await this.msDataRepo.findOne({ where: { dmPortNumber: dmPort, inspection: { id: inspection.id } } })
 
         this.moduleIMEI[`ttyUSB${dmPort}`] = msData.IMEI
         this.simIMSI[`ttyUSB${dmPort}`] = msData.IMSI
@@ -100,7 +100,7 @@ export class WCDMALongCallService {
                 if (lockWCDMAMatch) {
                     this.lockStatus[`ttyUSB${dmPort}`] = techType.wcdma
                     const insert = await this.msDataRepo.update(
-                        { IMEI: this.moduleIMEI[`ttyUSB${dmPort}`] },
+                        { IMEI: this.moduleIMEI[`ttyUSB${dmPort}`], inspection: { id: inspection.id } },
                         { lockStatus: this.lockStatus[`ttyUSB${dmPort}`] }
                     )
                     this.logger.warn(`ms data lock status updated. ${JSON.stringify(insert.raw)}`)
@@ -109,53 +109,55 @@ export class WCDMALongCallService {
 
                 const getWCDMANetworkParametersMatch = response.match(correctPattern.getWCDMANetworkParameters)
                 if (getWCDMANetworkParametersMatch) {
-                    const wcdmaData = {
-                        'tech': getWCDMANetworkParametersMatch[2].trim(),
-                        'mcc': getWCDMANetworkParametersMatch[3].trim(),
-                        'mnc': getWCDMANetworkParametersMatch[4].trim(),
-                        'lac': getWCDMANetworkParametersMatch[5].trim(),
-                        'cellid': getWCDMANetworkParametersMatch[6].trim(),
-                        'uarfcn': getWCDMANetworkParametersMatch[7].trim(),
-                        'psc': getWCDMANetworkParametersMatch[8].trim(),
-                        'rac': getWCDMANetworkParametersMatch[9].trim(),
-                        'rscp': getWCDMANetworkParametersMatch[10].trim(),
-                        'ecio': getWCDMANetworkParametersMatch[11].trim(),
-                        'phych': getWCDMANetworkParametersMatch[12].trim(),
-                        'sf': getWCDMANetworkParametersMatch[13].trim(),
-                        'slot': getWCDMANetworkParametersMatch[14].trim(),
-                        'speech_code': getWCDMANetworkParametersMatch[15].trim(),
-                        'comMod': getWCDMANetworkParametersMatch[16].trim(),
+                    if (global.recording === true) {
+                        const wcdmaData = {
+                            'tech': getWCDMANetworkParametersMatch[2].trim(),
+                            'mcc': getWCDMANetworkParametersMatch[3].trim(),
+                            'mnc': getWCDMANetworkParametersMatch[4].trim(),
+                            'lac': getWCDMANetworkParametersMatch[5].trim(),
+                            'cellid': getWCDMANetworkParametersMatch[6].trim(),
+                            'uarfcn': getWCDMANetworkParametersMatch[7].trim(),
+                            'psc': getWCDMANetworkParametersMatch[8].trim(),
+                            'rac': getWCDMANetworkParametersMatch[9].trim(),
+                            'rscp': getWCDMANetworkParametersMatch[10].trim(),
+                            'ecio': getWCDMANetworkParametersMatch[11].trim(),
+                            'phych': getWCDMANetworkParametersMatch[12].trim(),
+                            'sf': getWCDMANetworkParametersMatch[13].trim(),
+                            'slot': getWCDMANetworkParametersMatch[14].trim(),
+                            'speech_code': getWCDMANetworkParametersMatch[15].trim(),
+                            'comMod': getWCDMANetworkParametersMatch[16].trim(),
+                        }
+
+
+                        const location = await this.gpsDataRepo
+                            .createQueryBuilder('gps_data')
+                            .where('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt)) <= 2000000') // One second has 1,000,000 microseconds
+                            .orderBy('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt))', 'ASC')
+                            .setParameter('desiredCreatedAt', new Date())
+                            .getOne();
+
+                        const newEntry = this.wcdmaLongCallsRepo.create({
+                            tech: wcdmaData.tech,
+                            mcc: wcdmaData.mcc,
+                            mnc: wcdmaData.mnc,
+                            lac: wcdmaData.lac,
+                            cellid: wcdmaData.cellid,
+                            uarfcn: wcdmaData.uarfcn,
+                            psc: wcdmaData.psc,
+                            rac: wcdmaData.rac,
+                            rscp: wcdmaData.rscp,
+                            ecio: wcdmaData.ecio,
+                            phych: wcdmaData.phych,
+                            sf: wcdmaData.sf,
+                            slot: wcdmaData.slot,
+                            speech_code: wcdmaData.speech_code,
+                            comMod: wcdmaData.comMod,
+                            callingStatus: this.currentCallStatus,
+                            inspection: inspection,
+                            location: location
+                        })
+                        const save = await this.wcdmaLongCallsRepo.save(newEntry)
                     }
-
-
-                    const location = await this.gpsDataRepo
-                        .createQueryBuilder('gps_data')
-                        .where('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt)) <= 2000000') // One second has 1,000,000 microseconds
-                        .orderBy('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt))', 'ASC')
-                        .setParameter('desiredCreatedAt', new Date())
-                        .getOne();
-
-                    const newEntry = this.wcdmaLongCallsRepo.create({
-                        tech: wcdmaData.tech,
-                        mcc: wcdmaData.mcc,
-                        mnc: wcdmaData.mnc,
-                        lac: wcdmaData.lac,
-                        cellid: wcdmaData.cellid,
-                        uarfcn: wcdmaData.uarfcn,
-                        psc: wcdmaData.psc,
-                        rac: wcdmaData.rac,
-                        rscp: wcdmaData.rscp,
-                        ecio: wcdmaData.ecio,
-                        phych: wcdmaData.phych,
-                        sf: wcdmaData.sf,
-                        slot: wcdmaData.slot,
-                        speech_code: wcdmaData.speech_code,
-                        comMod: wcdmaData.comMod,
-                        callingStatus: this.currentCallStatus,
-                        inspection: inspection,
-                        location: location
-                    })
-                    const save = await this.wcdmaLongCallsRepo.save(newEntry)
                 }
 
                 const callStatusMatch = response.match(correctPattern.callStatus)

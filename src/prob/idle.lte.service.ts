@@ -35,7 +35,7 @@ export class LTEIdleService {
     ) { }
 
     async portsInitializing(dmPort: number, inspection: Inspection) {
-        const msData = await this.msDataRepo.findOne({ where: { dmPortNumber: dmPort } })
+        const msData = await this.msDataRepo.findOne({ where: { dmPortNumber: dmPort, inspection: { id: inspection.id } } })
 
         this.moduleIMEI[`ttyUSB${dmPort}`] = msData.IMEI
         this.simIMSI[`ttyUSB${dmPort}`] = msData.IMSI
@@ -96,7 +96,7 @@ export class LTEIdleService {
                 if (lockLTEMatch) {
                     this.lockStatus[`ttyUSB${dmPort}`] = techType.lte
                     const insert = await this.msDataRepo.update(
-                        { IMEI: this.moduleIMEI[`ttyUSB${dmPort}`] },
+                        { IMEI: this.moduleIMEI[`ttyUSB${dmPort}`], inspection: { id: inspection.id } },
                         { lockStatus: this.lockStatus[`ttyUSB${dmPort}`] }
                     )
                     this.logger.warn(`ms data lock status updated. ${JSON.stringify(insert.raw)}`)
@@ -105,54 +105,56 @@ export class LTEIdleService {
                 const getLTENetworkParametersMatch = response.match(correctPattern.getLTENetworkParameters)
 
                 if (getLTENetworkParametersMatch) {
-                    const lteData = {
-                        'tech': getLTENetworkParametersMatch[2].trim(),
-                        'is_tdd': getLTENetworkParametersMatch[3].trim(),
-                        'mcc': getLTENetworkParametersMatch[4].trim(),
-                        'mnc': getLTENetworkParametersMatch[5].trim(),
-                        'cellid': getLTENetworkParametersMatch[6].trim(),
-                        'pcid': getLTENetworkParametersMatch[7].trim(),
-                        'earfcn': getLTENetworkParametersMatch[8].trim(),
-                        'freq_band_ind': getLTENetworkParametersMatch[9].trim(),
-                        'ul_bandwidth': getLTENetworkParametersMatch[10].trim(),
-                        'dl_bandwidth': getLTENetworkParametersMatch[11].trim(),
-                        'tac': getLTENetworkParametersMatch[12].trim(),
-                        'rsrp': getLTENetworkParametersMatch[13].trim(),
-                        'rsrq': getLTENetworkParametersMatch[14].trim(),
-                        'rssi': getLTENetworkParametersMatch[15].trim(),
-                        'sinr': getLTENetworkParametersMatch[16].trim(),
-                        'srxlev': getLTENetworkParametersMatch[17].trim(),
+                    if (global.recording === true) {
+                        const lteData = {
+                            'tech': getLTENetworkParametersMatch[2].trim(),
+                            'is_tdd': getLTENetworkParametersMatch[3].trim(),
+                            'mcc': getLTENetworkParametersMatch[4].trim(),
+                            'mnc': getLTENetworkParametersMatch[5].trim(),
+                            'cellid': getLTENetworkParametersMatch[6].trim(),
+                            'pcid': getLTENetworkParametersMatch[7].trim(),
+                            'earfcn': getLTENetworkParametersMatch[8].trim(),
+                            'freq_band_ind': getLTENetworkParametersMatch[9].trim(),
+                            'ul_bandwidth': getLTENetworkParametersMatch[10].trim(),
+                            'dl_bandwidth': getLTENetworkParametersMatch[11].trim(),
+                            'tac': getLTENetworkParametersMatch[12].trim(),
+                            'rsrp': getLTENetworkParametersMatch[13].trim(),
+                            'rsrq': getLTENetworkParametersMatch[14].trim(),
+                            'rssi': getLTENetworkParametersMatch[15].trim(),
+                            'sinr': getLTENetworkParametersMatch[16].trim(),
+                            'srxlev': getLTENetworkParametersMatch[17].trim(),
+                        }
+
+
+                        const location = await this.gpsDataRepo
+                            .createQueryBuilder('gps_data')
+                            .where('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt)) <= 2000000') // One second has 1,000,000 microseconds
+                            .orderBy('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt))', 'ASC')
+                            .setParameter('desiredCreatedAt', new Date())
+                            .getOne();
+
+                        const newEntry = this.lteIdlesRepo.create({
+                            tech: lteData.tech,
+                            is_tdd: lteData.is_tdd,
+                            mcc: lteData.mcc,
+                            mnc: lteData.mnc,
+                            cellid: lteData.cellid,
+                            pcid: lteData.pcid,
+                            earfcn: lteData.earfcn,
+                            freq_band_ind: lteData.freq_band_ind,
+                            ul_bandwidth: lteData.ul_bandwidth,
+                            dl_bandwidth: lteData.dl_bandwidth,
+                            tac: lteData.tac,
+                            rsrp: lteData.rsrp,
+                            rsrq: lteData.rsrq,
+                            rssi: lteData.rssi,
+                            sinr: lteData.sinr,
+                            srxlev: lteData.srxlev,
+                            inspection: inspection,
+                            location: location
+                        })
+                        const save = await this.lteIdlesRepo.save(newEntry)
                     }
-
-
-                    const location = await this.gpsDataRepo
-                        .createQueryBuilder('gps_data')
-                        .where('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt)) <= 2000000') // One second has 1,000,000 microseconds
-                        .orderBy('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt))', 'ASC')
-                        .setParameter('desiredCreatedAt', new Date())
-                        .getOne();
-
-                    const newEntry = this.lteIdlesRepo.create({
-                        tech: lteData.tech,
-                        is_tdd: lteData.is_tdd,
-                        mcc: lteData.mcc,
-                        mnc: lteData.mnc,
-                        cellid: lteData.cellid,
-                        pcid: lteData.pcid,
-                        earfcn: lteData.earfcn,
-                        freq_band_ind: lteData.freq_band_ind,
-                        ul_bandwidth: lteData.ul_bandwidth,
-                        dl_bandwidth: lteData.dl_bandwidth,
-                        tac: lteData.tac,
-                        rsrp: lteData.rsrp,
-                        rsrq: lteData.rsrq,
-                        rssi: lteData.rssi,
-                        sinr: lteData.sinr,
-                        srxlev: lteData.srxlev,
-                        inspection: inspection,
-                        location: location
-                    })
-                    const save = await this.lteIdlesRepo.save(newEntry)
                 }
 
             })

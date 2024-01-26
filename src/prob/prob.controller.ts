@@ -47,9 +47,29 @@ export class ProbController {
   //   return this.probService.startLog(body.type, body.code, body.expertId)
   // }
 
-  @Post('start')
-  startDT(@Body() body: StartLogDto) {
-    return this.probService.startDT(body.type, body.code, body.expertId)
+  @Post('get-kml')
+  getKML(@Body() body: { inspectionId: number }) {
+    return this.probService.getKML(body.inspectionId)
+  }
+
+  @Post('init-dt')
+  initDT(@Body() body: StartLogDto) {
+    return this.probService.initDT(body.type, body.code, body.expertId)
+  }
+
+  @Get('start-dt')
+  startDT() {
+    return this.probService.start()
+  }
+
+  @Get('start-recording')
+  startRecording() {
+    return this.probService.startRecording()
+  }
+
+  @Get('pause-recording')
+  pauseRecording() {
+    return this.probService.pauseRecording()
   }
 
   // @Post('pause')

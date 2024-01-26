@@ -35,7 +35,7 @@ export class GSMIdleService {
     ) { }
 
     async portsInitializing(dmPort: number, inspection: Inspection) {
-        const msData = await this.msDataRepo.findOne({ where: { dmPortNumber: dmPort } })
+        const msData = await this.msDataRepo.findOne({ where: { dmPortNumber: dmPort, inspection: { id: inspection.id } } })
 
         this.moduleIMEI[`ttyUSB${dmPort}`] = msData.IMEI
         this.simIMSI[`ttyUSB${dmPort}`] = msData.IMSI
@@ -96,7 +96,7 @@ export class GSMIdleService {
                 if (lockGSMMatch) {
                     this.lockStatus[`ttyUSB${dmPort}`] = techType.gsm
                     const insert = await this.msDataRepo.update(
-                        { IMEI: this.moduleIMEI[`ttyUSB${dmPort}`] },
+                        { IMEI: this.moduleIMEI[`ttyUSB${dmPort}`], inspection: { id: inspection.id } },
                         { lockStatus: this.lockStatus[`ttyUSB${dmPort}`] }
                     )
                     this.logger.warn(`ms data lock status updated. ${JSON.stringify(insert.raw)}`)
@@ -106,72 +106,74 @@ export class GSMIdleService {
                 const getGSMNetworkParametersMatch = response.match(correctPattern.getGSMNetworkParameters)
 
                 if (getGSMNetworkParametersMatch) {
-                    const gsmData = {
-                        'tech': getGSMNetworkParametersMatch[2].trim(),
-                        'mcc': getGSMNetworkParametersMatch[3].trim(),
-                        'mnc': getGSMNetworkParametersMatch[4].trim(),
-                        'lac': getGSMNetworkParametersMatch[5].trim(),
-                        'cellid': getGSMNetworkParametersMatch[6].trim(),
-                        'bsic': getGSMNetworkParametersMatch[7].trim(),
-                        'arfcn': getGSMNetworkParametersMatch[8].trim(),
-                        'bandgsm': getGSMNetworkParametersMatch[9].trim(),
-                        'rxlev': getGSMNetworkParametersMatch[10].trim(),
-                        'txp': getGSMNetworkParametersMatch[11].trim(),
-                        'tla': getGSMNetworkParametersMatch[12].trim(),
-                        'drx': getGSMNetworkParametersMatch[13].trim(),
-                        'c1': getGSMNetworkParametersMatch[14].trim(),
-                        'c2': getGSMNetworkParametersMatch[15].trim(),
-                        'gprs': getGSMNetworkParametersMatch[16].trim(),
-                        'tch': getGSMNetworkParametersMatch[17].trim(),
-                        'ts': getGSMNetworkParametersMatch[18].trim(),
-                        'ta': getGSMNetworkParametersMatch[19].trim(),
-                        'maio': getGSMNetworkParametersMatch[20].trim(),
-                        'hsn': getGSMNetworkParametersMatch[21].trim(),
-                        'rxlevsub': getGSMNetworkParametersMatch[22].trim(),
-                        'rxlevfull': getGSMNetworkParametersMatch[23].trim(),
-                        'rxqualsub': getGSMNetworkParametersMatch[24].trim(),
-                        'rxqualfull': getGSMNetworkParametersMatch[25].trim(),
-                        'voicecodec': getGSMNetworkParametersMatch[26].trim(),
+                    this.logger.warn(global.recording)
+                    if (global.recording === true) {
+                        const gsmData = {
+                            'tech': getGSMNetworkParametersMatch[2].trim(),
+                            'mcc': getGSMNetworkParametersMatch[3].trim(),
+                            'mnc': getGSMNetworkParametersMatch[4].trim(),
+                            'lac': getGSMNetworkParametersMatch[5].trim(),
+                            'cellid': getGSMNetworkParametersMatch[6].trim(),
+                            'bsic': getGSMNetworkParametersMatch[7].trim(),
+                            'arfcn': getGSMNetworkParametersMatch[8].trim(),
+                            'bandgsm': getGSMNetworkParametersMatch[9].trim(),
+                            'rxlev': getGSMNetworkParametersMatch[10].trim(),
+                            'txp': getGSMNetworkParametersMatch[11].trim(),
+                            'tla': getGSMNetworkParametersMatch[12].trim(),
+                            'drx': getGSMNetworkParametersMatch[13].trim(),
+                            'c1': getGSMNetworkParametersMatch[14].trim(),
+                            'c2': getGSMNetworkParametersMatch[15].trim(),
+                            'gprs': getGSMNetworkParametersMatch[16].trim(),
+                            'tch': getGSMNetworkParametersMatch[17].trim(),
+                            'ts': getGSMNetworkParametersMatch[18].trim(),
+                            'ta': getGSMNetworkParametersMatch[19].trim(),
+                            'maio': getGSMNetworkParametersMatch[20].trim(),
+                            'hsn': getGSMNetworkParametersMatch[21].trim(),
+                            'rxlevsub': getGSMNetworkParametersMatch[22].trim(),
+                            'rxlevfull': getGSMNetworkParametersMatch[23].trim(),
+                            'rxqualsub': getGSMNetworkParametersMatch[24].trim(),
+                            'rxqualfull': getGSMNetworkParametersMatch[25].trim(),
+                            'voicecodec': getGSMNetworkParametersMatch[26].trim(),
+                        }
+
+                        const location = await this.gpsDataRepo
+                            .createQueryBuilder('gps_data')
+                            .where('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt)) <= 2000000') // One second has 1,000,000 microseconds
+                            .orderBy('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt))', 'ASC')
+                            .setParameter('desiredCreatedAt', new Date())
+                            .getOne();
+
+                        const newEntry = this.gsmIdlesRepo.create({
+                            tech: gsmData.tech,
+                            mcc: gsmData.mcc,
+                            mnc: gsmData.mnc,
+                            lac: gsmData.lac,
+                            cellid: gsmData.cellid,
+                            bsic: gsmData.bsic,
+                            arfcn: gsmData.arfcn,
+                            bandgsm: gsmData.bandgsm,
+                            rxlev: gsmData.rxlev,
+                            txp: gsmData.txp,
+                            tla: gsmData.tla,
+                            drx: gsmData.drx,
+                            c1: gsmData.c1,
+                            c2: gsmData.c2,
+                            gprs: gsmData.gprs,
+                            tch: gsmData.tch,
+                            ts: gsmData.ts,
+                            ta: gsmData.ta,
+                            maio: gsmData.maio,
+                            hsn: gsmData.hsn,
+                            rxlevsub: gsmData.rxlevsub,
+                            rxlevfull: gsmData.rxlevfull,
+                            rxqualsub: gsmData.rxqualsub,
+                            rxqualfull: gsmData.rxqualfull,
+                            voicecodec: gsmData.voicecodec,
+                            inspection: inspection,
+                            location: location
+                        })
+                        const save = await this.gsmIdlesRepo.save(newEntry)
                     }
-
-
-                    const location = await this.gpsDataRepo
-                        .createQueryBuilder('gps_data')
-                        .where('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt)) <= 2000000') // One second has 1,000,000 microseconds
-                        .orderBy('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt))', 'ASC')
-                        .setParameter('desiredCreatedAt', new Date())
-                        .getOne();
-
-                    const newEntry = this.gsmIdlesRepo.create({
-                        tech: gsmData.tech,
-                        mcc: gsmData.mcc,
-                        mnc: gsmData.mnc,
-                        lac: gsmData.lac,
-                        cellid: gsmData.cellid,
-                        bsic: gsmData.bsic,
-                        arfcn: gsmData.arfcn,
-                        bandgsm: gsmData.bandgsm,
-                        rxlev: gsmData.rxlev,
-                        txp: gsmData.txp,
-                        tla: gsmData.tla,
-                        drx: gsmData.drx,
-                        c1: gsmData.c1,
-                        c2: gsmData.c2,
-                        gprs: gsmData.gprs,
-                        tch: gsmData.tch,
-                        ts: gsmData.ts,
-                        ta: gsmData.ta,
-                        maio: gsmData.maio,
-                        hsn: gsmData.hsn,
-                        rxlevsub: gsmData.rxlevsub,
-                        rxlevfull: gsmData.rxlevfull,
-                        rxqualsub: gsmData.rxqualsub,
-                        rxqualfull: gsmData.rxqualfull,
-                        voicecodec: gsmData.voicecodec,
-                        inspection: inspection,
-                        location: location
-                    })
-                    const save = await this.gsmIdlesRepo.save(newEntry)
                 }
 
             })

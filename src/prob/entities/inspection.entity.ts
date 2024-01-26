@@ -9,6 +9,8 @@ import { WCDMALongCall } from "./wcdmaLongCall.entity";
 import { FTPDL } from "./ftpDL.entity";
 import { FTPUL } from "./ftpUL.entity";
 import { ALLTECHIdle } from "./alltechIdle.entity";
+import { MSData } from "./ms-data.entity";
+import { GPSData } from "./gps-data.entity";
 
 @Entity()
 export class Inspection {
@@ -47,6 +49,12 @@ export class Inspection {
 
     @OneToMany(() => FTPUL, (ftpUL) => ftpUL.inspection, { cascade: true })
     ftpULs: FTPUL[];
+
+    @OneToMany(() => MSData, (msData) => msData.inspection, { cascade: true })
+    msDatas: MSData[];
+
+    @OneToMany(() => GPSData, (gpsData) => gpsData.inspection, { cascade: true })
+    gpsDatas: GPSData[];
 
     @CreateDateColumn()
     createdAt?: Date;

@@ -5,6 +5,7 @@ import { Repository } from "typeorm";
 import { SerialPort } from "serialport";
 import { commands } from "./enum/commands.enum";
 import { MSData } from "./entities/ms-data.entity";
+import { Inspection } from "./entities/inspection.entity";
 
 const correctPattern = {
     'moduleInformation': /.*Quectel\r\n(\w+)\r\nRevision: (\w+)\r\n.*/,
@@ -44,7 +45,7 @@ export class MSService {
         @InjectRepository(MSData) private msDataRepo: Repository<MSData>,
     ) { }
 
-    async portsInitializing() {
+    async portsInitializing(inspection: Inspection) {
         for (const dmPort of this.dmPorts) {
             this.dmPortIntervalId[`ttyUSB${dmPort}`] = setInterval(
                 async () => {
@@ -65,20 +66,41 @@ export class MSService {
         }
         await sleep(5000)
 
-        const insert = await this.msDataRepo.upsert(
-            this.dmPorts.map(dmPort => ({
-                modelName: this.moduleInfo[`ttyUSB${dmPort}`].modelName,
-                revision: this.moduleInfo[`ttyUSB${dmPort}`].revision,
-                dmPortNumber: dmPort,
-                IMEI: this.moduleIMEI[`ttyUSB${dmPort}`],
-                IMSI: this.simIMSI[`ttyUSB${dmPort}`],
-                simStatus: this.simStatus[`ttyUSB${dmPort}`],
-                callability: this.callStatus[`ttyUSB${dmPort}`],
-            })), {
-            conflictPaths: ['IMEI']
-        })
+        const res = []
+        for (const dmPort of this.dmPorts) {
+            const [find] = await this.msDataRepo.find({ where: { inspection: inspection, IMEI: this.moduleIMEI[`ttyUSB${dmPort}`] } })
+            if (!find) {
+                const newEntry = this.msDataRepo.create({
+                    modelName: this.moduleInfo[`ttyUSB${dmPort}`].modelName,
+                    revision: this.moduleInfo[`ttyUSB${dmPort}`].revision,
+                    dmPortNumber: dmPort,
+                    IMEI: this.moduleIMEI[`ttyUSB${dmPort}`],
+                    IMSI: this.simIMSI[`ttyUSB${dmPort}`],
+                    simStatus: this.simStatus[`ttyUSB${dmPort}`],
+                    callability: this.callStatus[`ttyUSB${dmPort}`],
+                    inspection: inspection,
+                })
 
-        this.logger.warn(`data stored as: ${JSON.stringify(insert.identifiers.length)}`)
+                const save = await this.msDataRepo.save(newEntry)
+                res.push(save)
+            }
+            else {
+                const update = await this.msDataRepo.update(
+                    { inspection: inspection, IMEI: this.moduleIMEI[`ttyUSB${dmPort}`] },
+                    {
+                        modelName: this.moduleInfo[`ttyUSB${dmPort}`].modelName,
+                        revision: this.moduleInfo[`ttyUSB${dmPort}`].revision,
+                        dmPortNumber: dmPort,
+                        IMSI: this.simIMSI[`ttyUSB${dmPort}`],
+                        simStatus: this.simStatus[`ttyUSB${dmPort}`],
+                        callability: this.callStatus[`ttyUSB${dmPort}`],
+                    }
+                )
+                res.push(update)
+            }
+        }
+
+        this.logger.warn(`ms data stored. Count is: ${res.length}`)
 
     }
 

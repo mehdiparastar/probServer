@@ -692,7 +692,7 @@ export class ProbService implements OnModuleInit {
     await this.inspectionsRepo.query(`delete from ${this.inspectionsRepo.metadata.tableName}`);
     await this.gpsDataRepo.query(`delete from ${this.gpsDataRepo.metadata.tableName}`);
 
-    await this.gpsService.portsInitializing()
+    await this.gpsService.portsInitializing({} as Inspection)
     // await this.firstINIT()
   }
 

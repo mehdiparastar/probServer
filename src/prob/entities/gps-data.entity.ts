@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, Entity, OneToMany, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { GSMIdle } from "./gsmIdle.entity";
 import { WCDMAIdle } from "./wcdmaIdle.entity";
 import { LTEIdle } from "./lteIdle.entity";
@@ -7,6 +7,7 @@ import { WCDMALongCall } from "./wcdmaLongCall.entity";
 import { FTPDL } from "./ftpDL.entity";
 import { FTPUL } from "./ftpUL.entity";
 import { ALLTECHIdle } from "./alltechIdle.entity";
+import { Inspection } from "./inspection.entity";
 
 @Entity()
 export class GPSData {
@@ -51,6 +52,9 @@ export class GPSData {
 
     @OneToMany(() => FTPUL, (ftpul) => ftpul.location, { cascade: true, nullable: true }) // specify inverse side as a second parameter
     ftpULSamples: FTPUL[]
+
+    @ManyToOne(() => Inspection, (inspection) => inspection.gpsDatas, { nullable: false })
+    inspection: Inspection;
 
     @CreateDateColumn()
     createdAt?: Date;

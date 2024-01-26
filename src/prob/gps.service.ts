@@ -6,6 +6,7 @@ import { SerialPort } from "serialport";
 import { commands } from "./enum/commands.enum";
 import { MSData } from "./entities/ms-data.entity";
 import { scenarioName } from "./enum/scenarioName.enum";
+import { Inspection } from "./entities/inspection.entity";
 
 
 function convertDMStoDD(degrees: string, direction: string) {
@@ -52,7 +53,7 @@ export class GPSService {
         return { time, latitude, longitude, groundSpeed, trackAngle };
     }
 
-    async portsInitializing() {
+    async portsInitializing(inspection: Inspection) {
 
         for (const portNumber of ([...this.dmPorts, ...this.nmeaPorts])) {
             if (this.initializedPorts[`ttyUSB${portNumber}`]) {
@@ -122,18 +123,21 @@ export class GPSService {
                                     const gpsTime = ggaData.time || rmcData.time
                                     if (gpsTime && gpsTime !== '') {
                                         try {
-                                            const gpsData = await this.gpsDataRepo.upsert({
-                                                gpsTime: gpsTime,
-                                                latitude: ggaData.latitude || rmcData.latitude,
-                                                longitude: ggaData.longitude || rmcData.longitude,
-                                                altitude: ggaData.altitude,
-                                                groundSpeed: rmcData.groundSpeed,
-                                            },
-                                                {
-                                                    conflictPaths: ['gpsTime'],
-                                                    skipUpdateIfNoValuesChanged: true
-                                                }
-                                            )
+                                            if (global.recording === true) {
+                                                const gpsData = await this.gpsDataRepo.upsert({
+                                                    gpsTime: gpsTime,
+                                                    latitude: ggaData.latitude || rmcData.latitude,
+                                                    longitude: ggaData.longitude || rmcData.longitude,
+                                                    altitude: ggaData.altitude,
+                                                    groundSpeed: rmcData.groundSpeed,
+                                                    inspection: inspection
+                                                },
+                                                    {
+                                                        conflictPaths: ['gpsTime'],
+                                                        skipUpdateIfNoValuesChanged: true
+                                                    }
+                                                )
+                                            }
                                         }
                                         catch (ex) {
                                             this.logger.error(ex.message)
@@ -147,24 +151,24 @@ export class GPSService {
                                         const dmPortNumberOfGpsPort = this.dmPorts[this.nmeaPorts.indexOf(this.gpsPort)]
                                         const dmPortsExceptMappedGpsPort = this.dmPorts.filter(p => p !== dmPortNumberOfGpsPort)
 
-                                        const update = await this.msDataRepo.update({ dmPortNumber: dmPortNumberOfGpsPort }, { isGPS: true })
+                                        const update = await this.msDataRepo.update({ dmPortNumber: dmPortNumberOfGpsPort, inspection: { id: inspection.id } }, { isGPS: true })
                                         this.logger.warn(`port ${this.gpsPort} set as gps port.`)
 
-                                        const gsmIdleScenario = await this.msDataRepo.update({ dmPortNumber: dmPortNumberOfGpsPort }, { activeScenario: scenarioName.GSMIdle })
+                                        const gsmIdleScenario = await this.msDataRepo.update({ dmPortNumber: dmPortNumberOfGpsPort, inspection: { id: inspection.id } }, { activeScenario: scenarioName.GSMIdle })
 
-                                        const wcdmaIdleScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[0] }, { activeScenario: scenarioName.WCDMAIdle })
+                                        const wcdmaIdleScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[0], inspection: { id: inspection.id } }, { activeScenario: scenarioName.WCDMAIdle })
 
-                                        const lteIdleScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[1] }, { activeScenario: scenarioName.LTEIdle })
+                                        const lteIdleScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[1], inspection: { id: inspection.id } }, { activeScenario: scenarioName.LTEIdle })
 
-                                        const allTechIdleScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[2] }, { activeScenario: scenarioName.ALLTechIdle })
+                                        const allTechIdleScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[2], inspection: { id: inspection.id } }, { activeScenario: scenarioName.ALLTechIdle })
 
-                                        const gsmLongCallScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[3] }, { activeScenario: scenarioName.GSMLongCall })
+                                        const gsmLongCallScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[3], inspection: { id: inspection.id } }, { activeScenario: scenarioName.GSMLongCall })
 
-                                        const wcdmaLongCallScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[4] }, { activeScenario: scenarioName.WCDMALongCall })
+                                        const wcdmaLongCallScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[4], inspection: { id: inspection.id } }, { activeScenario: scenarioName.WCDMALongCall })
 
-                                        const ftpDLScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[5] }, { activeScenario: scenarioName.FTP_DL_TH })
+                                        const ftpDLScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[5], inspection: { id: inspection.id } }, { activeScenario: scenarioName.FTP_DL_TH })
 
-                                        const ftpUlScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[6] }, { activeScenario: scenarioName.FTP_UL_TH })
+                                        const ftpUlScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[6], inspection: { id: inspection.id } }, { activeScenario: scenarioName.FTP_UL_TH })
 
                                         this.logger.warn(`all scenarios set.`)
                                         this.initializingEnd = true

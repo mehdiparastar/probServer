@@ -1,13 +1,15 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, Index, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { scenarioName } from "../enum/scenarioName.enum";
 import { techType } from "../enum/techType.enum";
+import { Inspection } from "./inspection.entity";
 
 @Entity()
+@Index('pk', ['inspection', 'IMEI'], { unique: true })
 export class MSData {
     @PrimaryGeneratedColumn()
     id: number;
 
-    @Column({ unique: true })
+    @Column({ nullable: false })
     dmPortNumber: number
 
     @Column({ nullable: true })
@@ -16,10 +18,10 @@ export class MSData {
     @Column({ nullable: true })
     revision: string
 
-    @Column({ unique: true, nullable: true })
+    @Column({ nullable: true })
     IMSI?: string
 
-    @Column({ unique: true, nullable: false })
+    @Column({ nullable: false })
     IMEI?: string
 
     @Column({ nullable: true })
@@ -36,6 +38,9 @@ export class MSData {
 
     @Column({ nullable: true })
     callability?: boolean
+
+    @ManyToOne(() => Inspection, (inspection) => inspection.msDatas, { nullable: false })
+    inspection: Inspection;
 
     @CreateDateColumn()
     createdAt?: Date;
