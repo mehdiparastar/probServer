@@ -106,7 +106,6 @@ export class GSMIdleService {
                 const getGSMNetworkParametersMatch = response.match(correctPattern.getGSMNetworkParameters)
 
                 if (getGSMNetworkParametersMatch) {
-                    this.logger.warn(global.recording)
                     if (global.recording === true) {
                         const gsmData = {
                             'tech': getGSMNetworkParametersMatch[2].trim(),
