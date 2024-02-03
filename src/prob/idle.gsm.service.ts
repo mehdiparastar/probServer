@@ -12,6 +12,8 @@ import { GPSData } from './entities/gps-data.entity';
 const correctPattern = {
     'lockGSM': /AT\+QCFG="nwscanmode",1\r\r\nOK\r\n/,
     'getGSMNetworkParameters': /.*\+QENG: "servingcell","(\w+)","(\w+)",(\d+),(\d+),(\d+),(\w+),(\d+),(\d+),([-]|\w+),(-?\d+),(\d+),(\d+),(\d+),(\d+),(\d+),(\d+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),"([-]|\w+)"\r\n\r\nOK\r\n/,
+    'noCoveragePrameters': /.*\+QENG: "servingcell","SEARCH".*/,
+
 }
 
 const sleep = async (milisecond: number) => {
@@ -175,6 +177,78 @@ export class GSMIdleService {
                     }
                 }
 
+                const noCoveragePrametersMatch = response.match(correctPattern.noCoveragePrameters)
+                if (noCoveragePrametersMatch) {
+                    if (global.recording === true) {
+                        const gsmIdleData_noCov = {
+                            'tech': '-',
+                            'mcc': '-',
+                            'mnc': '-',
+                            'lac': '-',
+                            'cellid': '-',
+                            'bsic': '-',
+                            'arfcn': '-',
+                            'bandgsm': '-',
+                            'rxlev': '-',
+                            'txp': '-',
+                            'tla': '-',
+                            'drx': '-',
+                            'c1': '-',
+                            'c2': '-',
+                            'gprs': '-',
+                            'tch': '-',
+                            'ts': '-',
+                            'ta': '-',
+                            'maio': '-',
+                            'hsn': '-',
+                            'rxlevsub': '-',
+                            'rxlevfull': '-',
+                            'rxqualsub': '-',
+                            'rxqualfull': '-',
+                            'voicecodec': '-',
+                        }
+
+
+                        const location = await this.gpsDataRepo
+                            .createQueryBuilder('gps_data')
+                            .where('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt)) <= 2000000') // One second has 1,000,000 microseconds
+                            .orderBy('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt))', 'ASC')
+                            .setParameter('desiredCreatedAt', new Date())
+                            .getOne();
+
+                        const newEntry = this.gsmIdlesRepo.create({
+                            tech: gsmIdleData_noCov.tech,
+                            mcc: gsmIdleData_noCov.mcc,
+                            mnc: gsmIdleData_noCov.mnc,
+                            lac: gsmIdleData_noCov.lac,
+                            cellid: gsmIdleData_noCov.cellid,
+                            bsic: gsmIdleData_noCov.bsic,
+                            arfcn: gsmIdleData_noCov.arfcn,
+                            bandgsm: gsmIdleData_noCov.bandgsm,
+                            rxlev: gsmIdleData_noCov.rxlev,
+                            txp: gsmIdleData_noCov.txp,
+                            tla: gsmIdleData_noCov.tla,
+                            drx: gsmIdleData_noCov.drx,
+                            c1: gsmIdleData_noCov.c1,
+                            c2: gsmIdleData_noCov.c2,
+                            gprs: gsmIdleData_noCov.gprs,
+                            tch: gsmIdleData_noCov.tch,
+                            ts: gsmIdleData_noCov.ts,
+                            ta: gsmIdleData_noCov.ta,
+                            maio: gsmIdleData_noCov.maio,
+                            hsn: gsmIdleData_noCov.hsn,
+                            rxlevsub: gsmIdleData_noCov.rxlevsub,
+                            rxlevfull: gsmIdleData_noCov.rxlevfull,
+                            rxqualsub: gsmIdleData_noCov.rxqualsub,
+                            rxqualfull: gsmIdleData_noCov.rxqualfull,
+                            voicecodec: gsmIdleData_noCov.voicecodec,
+                            inspection: inspection,
+                            location: location
+                        })
+                        const save = await this.gsmIdlesRepo.save(newEntry)
+                    }
+                }
+
             })
 
             port.on('error', (err) => {
@@ -188,9 +262,11 @@ export class GSMIdleService {
     async msItrationDuty(dmPort: number, interval: number = 1000) {
         const port = this.initializedPorts[`ttyUSB${dmPort}`]
 
-        setInterval(() => {
+        const intervalId = setInterval(() => {
             port.write(commands.getGSMNetworkParameters)
         }, interval)
+
+        global.activeIntervals.push(intervalId)
     }
 
     checkPortTrueInit(dmPort: number) {

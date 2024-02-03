@@ -12,6 +12,8 @@ import { GPSData } from './entities/gps-data.entity';
 const correctPattern = {
     'lockLTE': /AT\+QCFG="nwscanmode",3\r\r\nOK\r\n/,
     'getLTENetworkParameters': /.*\+QENG: "servingcell","(-?\w+)","(-?\w+)","(-?\w+)",(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-w+?|-?).*/,
+    'noCoveragePrameters': /.*\+QENG: "servingcell","SEARCH".*/,
+
 }
 
 const sleep = async (milisecond: number) => {
@@ -103,7 +105,6 @@ export class LTEIdleService {
                 }
 
                 const getLTENetworkParametersMatch = response.match(correctPattern.getLTENetworkParameters)
-
                 if (getLTENetworkParametersMatch) {
                     if (global.recording === true) {
                         const lteData = {
@@ -157,6 +158,60 @@ export class LTEIdleService {
                     }
                 }
 
+                const noCoveragePrametersMatch = response.match(correctPattern.noCoveragePrameters)
+                if (noCoveragePrametersMatch) {
+                    if (global.recording === true) {
+                        const lteData_noCov = {
+                            'tech': '-',
+                            'is_tdd': '-',
+                            'mcc': '-',
+                            'mnc': '-',
+                            'cellid': '-',
+                            'pcid': '-',
+                            'earfcn': '-',
+                            'freq_band_ind': '-',
+                            'ul_bandwidth': '-',
+                            'dl_bandwidth': '-',
+                            'tac': '-',
+                            'rsrp': '-',
+                            'rsrq': '-',
+                            'rssi': '-',
+                            'sinr': '-',
+                            'srxlev': '-',
+                        }
+
+
+                        const location = await this.gpsDataRepo
+                            .createQueryBuilder('gps_data')
+                            .where('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt)) <= 2000000') // One second has 1,000,000 microseconds
+                            .orderBy('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt))', 'ASC')
+                            .setParameter('desiredCreatedAt', new Date())
+                            .getOne();
+
+                        const newEntry = this.lteIdlesRepo.create({
+                            tech: lteData_noCov.tech,
+                            is_tdd: lteData_noCov.is_tdd,
+                            mcc: lteData_noCov.mcc,
+                            mnc: lteData_noCov.mnc,
+                            cellid: lteData_noCov.cellid,
+                            pcid: lteData_noCov.pcid,
+                            earfcn: lteData_noCov.earfcn,
+                            freq_band_ind: lteData_noCov.freq_band_ind,
+                            ul_bandwidth: lteData_noCov.ul_bandwidth,
+                            dl_bandwidth: lteData_noCov.dl_bandwidth,
+                            tac: lteData_noCov.tac,
+                            rsrp: lteData_noCov.rsrp,
+                            rsrq: lteData_noCov.rsrq,
+                            rssi: lteData_noCov.rssi,
+                            sinr: lteData_noCov.sinr,
+                            srxlev: lteData_noCov.srxlev,
+                            inspection: inspection,
+                            location: location
+                        })
+                        const save = await this.lteIdlesRepo.save(newEntry)
+                    }
+                }
+
             })
 
             port.on('error', (err) => {
@@ -170,9 +225,11 @@ export class LTEIdleService {
     async msItrationDuty(dmPort: number, interval: number = 1000) {
         const port = this.initializedPorts[`ttyUSB${dmPort}`]
 
-        setInterval(() => {
+        const intervalId = setInterval(() => {
             port.write(commands.getLTENetworkParameters)
         }, interval)
+
+        global.activeIntervals.push(intervalId)
     }
 
     checkPortTrueInit(dmPort: number) {

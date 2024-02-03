@@ -14,6 +14,7 @@ import { callStatus as msCallStatus } from './enum/callStatus.enum';
 const correctPattern = {
     'lockGSM': /AT\+QCFG="nwscanmode",1\r\r\nOK\r\n/,
     'getGSMNetworkParameters': /.*\+QENG: "servingcell","(\w+)","(\w+)",(\d+),(\d+),(\d+),(\w+),(\d+),(\d+),([-]|\w+),(-?\d+),(\d+),(\d+),(\d+),(\d+),(\d+),(\d+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),"([-]|\w+)"\r\n\r\nOK\r\n/,
+    'noCoveragePrameters': /.*\+QENG: "servingcell","SEARCH".*/,
     'callStatus': /.*CPAS: (\d+).*/,
 }
 
@@ -180,7 +181,81 @@ export class GSMLongCallService {
                     }
                 }
 
+                const noCoveragePrametersMatch = response.match(correctPattern.noCoveragePrameters)
+                if (noCoveragePrametersMatch) {
+                    if (global.recording === true) {
+                        const gsmData_noCov = {
+                            'tech': '-',
+                            'mcc': '-',
+                            'mnc': '-',
+                            'lac': '-',
+                            'cellid': '-',
+                            'bsic': '-',
+                            'arfcn': '-',
+                            'bandgsm': '-',
+                            'rxlev': '-',
+                            'txp': '-',
+                            'tla': '-',
+                            'drx': '-',
+                            'c1': '-',
+                            'c2': '-',
+                            'gprs': '-',
+                            'tch': '-',
+                            'ts': '-',
+                            'ta': '-',
+                            'maio': '-',
+                            'hsn': '-',
+                            'rxlevsub': '-',
+                            'rxlevfull': '-',
+                            'rxqualsub': '-',
+                            'rxqualfull': '-',
+                            'voicecodec': '-',
+                        }
+
+
+                        const location = await this.gpsDataRepo
+                            .createQueryBuilder('gps_data')
+                            .where('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt)) <= 2000000') // One second has 1,000,000 microseconds
+                            .orderBy('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt))', 'ASC')
+                            .setParameter('desiredCreatedAt', new Date())
+                            .getOne();
+
+                        const newEntry = this.gsmLongCallsRepo.create({
+                            tech: gsmData_noCov.tech,
+                            mcc: gsmData_noCov.mcc,
+                            mnc: gsmData_noCov.mnc,
+                            lac: gsmData_noCov.lac,
+                            cellid: gsmData_noCov.cellid,
+                            bsic: gsmData_noCov.bsic,
+                            arfcn: gsmData_noCov.arfcn,
+                            bandgsm: gsmData_noCov.bandgsm,
+                            rxlev: gsmData_noCov.rxlev,
+                            txp: gsmData_noCov.txp,
+                            tla: gsmData_noCov.tla,
+                            drx: gsmData_noCov.drx,
+                            c1: gsmData_noCov.c1,
+                            c2: gsmData_noCov.c2,
+                            gprs: gsmData_noCov.gprs,
+                            tch: gsmData_noCov.tch,
+                            ts: gsmData_noCov.ts,
+                            ta: gsmData_noCov.ta,
+                            maio: gsmData_noCov.maio,
+                            hsn: gsmData_noCov.hsn,
+                            rxlevsub: gsmData_noCov.rxlevsub,
+                            rxlevfull: gsmData_noCov.rxlevfull,
+                            rxqualsub: gsmData_noCov.rxqualsub,
+                            rxqualfull: gsmData_noCov.rxqualfull,
+                            voicecodec: gsmData_noCov.voicecodec,
+                            callingStatus: this.currentCallStatus,
+                            inspection: inspection,
+                            location: location
+                        })
+                        const save = await this.gsmLongCallsRepo.save(newEntry)
+                    }
+                }
+
                 const callStatusMatch = response.match(correctPattern.callStatus)
+                this.logger.warn(callStatusMatch)
                 if (callStatusMatch) {
                     const callStatusData = {
                         'statusNo': callStatusMatch[1].trim()
@@ -190,6 +265,7 @@ export class GSMLongCallService {
                         if (this.simIMSI[`ttyUSB${dmPort}`].slice(0, 6).includes('43211')) {
                             port.write(commands.callMCI)
                         } else if (this.simIMSI[`ttyUSB${dmPort}`].slice(0, 6).includes('43235')) {
+                            this.logger.warn('try to call')
                             port.write(commands.callMTN)
                         }
                     }
@@ -210,17 +286,21 @@ export class GSMLongCallService {
     async msItrationDuty02(dmPort: number, interval: number = 1000) {
         const port = this.initializedPorts[`ttyUSB${dmPort}`]
 
-        setInterval(() => {
+        const intervalId = setInterval(() => {
             port.write(commands.getGSMNetworkParameters)
         }, interval)
+
+        global.activeIntervals.push(intervalId)
     }
 
     async msItrationDuty01(dmPort: number, interval: number = 2500) {
         const port = this.initializedPorts[`ttyUSB${dmPort}`]
 
-        setInterval(() => {
+        const intervalId = setInterval(() => {
             port.write(commands.getCallStatus)
         }, interval)
+
+        global.activeIntervals.push(intervalId)
     }
 
     checkPortTrueInit(dmPort: number) {

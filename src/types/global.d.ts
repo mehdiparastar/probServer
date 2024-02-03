@@ -4,6 +4,9 @@ import { DataSourceOptions } from "typeorm";
 export { };
 
 declare global {
+    var recording: boolean
+    var activeIntervals: NodeJS.Timeout[]
+
     interface IconfigService {
         CLIENT_PORT?: number;
         SERVER_PORT?: number;

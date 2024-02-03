@@ -27,7 +27,7 @@ import * as fs from 'fs';
 import { callStatus } from './enum/callStatus.enum';
 
 
-const sleep = async (milisecond: number) => {
+export const sleep = async (milisecond: number) => {
   await new Promise(resolve => setTimeout(resolve, milisecond))
 }
 
@@ -51,7 +51,7 @@ interface KMLData {
     longitude: string;
   };
   data: {
-    pointValue: number;
+    pointValue: number | string;
     valueName: string;
     pointColor: string;
     pointMNC: string;
@@ -65,7 +65,7 @@ interface KMLData {
 @Injectable()
 export class ProbService implements OnModuleInit {
   private readonly logger = new Logger(ProbService.name);
-  private inspection: Inspection
+  private inspection: Inspection = null
   private portsInitializing: boolean = false
   private portsInitialized: boolean = false
   private gpsInitializing: boolean = false
@@ -103,31 +103,39 @@ export class ProbService implements OnModuleInit {
 
   }
 
-  private getRxLevColor(rxLev: number): string {
-    if (rxLev < -93) {
-      return styleDict.red //'ff0000'; // Red
-    } else if (rxLev >= -90) {
-      return styleDict.green // '00ff00'; // Green
-    } else if (rxLev >= -93 && rxLev < -90) {
-      return styleDict.yellow // 'ffff00'; // Yellow
-    } {
+  private getRxLevColor(rxLev: number | string): string {
+    if (Number.isNaN(+rxLev) === false || (typeof (rxLev) === 'string' && rxLev.trim() !== '')) {
+      if (+rxLev < -93) {
+        return styleDict.red //'ff0000'; // Red
+      } else if (+rxLev >= -90) {
+        return styleDict.green // '00ff00'; // Green
+      } else if (+rxLev >= -93 && +rxLev < -90) {
+        return styleDict.yellow // 'ffff00'; // Yellow
+      } {
+        return styleDict.black //'000'; // Black
+      }
+    }
+    else {
       return styleDict.black //'000'; // Black
     }
   };
 
-  private getRxQualColor(rxQual: number): string {
-    if (rxQual < 5) {
-      return styleDict.green // '00ff00'; // Green
-    } else if (rxQual >= 6) {
-      return styleDict.red //'ff0000'; // Red
-    } else if (rxQual >= 5 && rxQual < 6) {
-      return styleDict.yellow // 'ffff00'; // Yellow
-    } {
+  private getRxQualColor(rxQual: number | string): string {
+    if (Number.isNaN(+rxQual) === false || (typeof (rxQual) === 'string' && rxQual.trim() !== '')) {
+      if (+rxQual < 5) {
+        return styleDict.green // '00ff00'; // Green
+      } else if (+rxQual >= 6) {
+        return styleDict.red //'ff0000'; // Red
+      } else if (+rxQual >= 5 && +rxQual < 6) {
+        return styleDict.yellow // 'ffff00'; // Yellow
+      } {
+        return styleDict.black //'000'; // Black
+      }
+    }
+    else {
       return styleDict.black //'000'; // Black
     }
   };
-
-
 
   private generateKMLContent(data: KMLData[], inspection: Inspection, fileName: string): string {
     // Define a color scale based on rxLev values
@@ -282,29 +290,29 @@ export class ProbService implements OnModuleInit {
 
       this.tryTofirstStartDT = true
 
-      this.logger.error('------------------- start gsm idle service -----------------------')
-      await this.gsmIdleService.portsInitializing(2, this.inspection)
-      this.logger.error('------------------- end gsm idle service -----------------------')
+      // this.logger.error('------------------- start gsm idle service -----------------------')
+      // await this.gsmIdleService.portsInitializing(2, this.inspection)
+      // this.logger.error('------------------- end gsm idle service -----------------------')
 
-      this.logger.error('------------------- start wcdma idle service -----------------------')
-      await this.wcdmaIdleService.portsInitializing(6, this.inspection)
-      this.logger.error('------------------- end wcdma idle service -----------------------')
+      // this.logger.error('------------------- start wcdma idle service -----------------------')
+      // await this.wcdmaIdleService.portsInitializing(6, this.inspection)
+      // this.logger.error('------------------- end wcdma idle service -----------------------')
 
-      this.logger.error('------------------- start lte idle service -----------------------')
-      await this.lteIdleService.portsInitializing(10, this.inspection)
-      this.logger.error('------------------- end lte idle service -----------------------')
+      // this.logger.error('------------------- start lte idle service -----------------------')
+      // await this.lteIdleService.portsInitializing(10, this.inspection)
+      // this.logger.error('------------------- end lte idle service -----------------------')
 
       this.logger.error('------------------- start alltech idle service -----------------------')
       await this.alltechIdleService.portsInitializing(14, this.inspection)
       this.logger.error('------------------- end alltech idle service -----------------------')
 
-      this.logger.error('------------------- start gsm LongCall service -----------------------')
-      await this.gsmLongCallService.portsInitializing(18, this.inspection)
-      this.logger.error('------------------- end gsm LongCall service -----------------------')
+      // this.logger.error('------------------- start gsm LongCall service -----------------------')
+      // await this.gsmLongCallService.portsInitializing(18, this.inspection)
+      // this.logger.error('------------------- end gsm LongCall service -----------------------')
 
-      this.logger.error('------------------- start wcdma LongCall service -----------------------')
-      await this.wcdmaLongCallService.portsInitializing(22, this.inspection)
-      this.logger.error('------------------- end wcdma LongCall service -----------------------')
+      // this.logger.error('------------------- start wcdma LongCall service -----------------------')
+      // await this.wcdmaLongCallService.portsInitializing(22, this.inspection)
+      // this.logger.error('------------------- end wcdma LongCall service -----------------------')
 
 
       this.firstStartDT = true
@@ -315,6 +323,44 @@ export class ProbService implements OnModuleInit {
     }
     else {
       return { msg: `please init first.` }
+    }
+  }
+
+  async stop() {
+    if (global.recording === true || (this.inspection !== null && this.inspection !== undefined)) {
+      this.pauseRecording()
+
+      await sleep(1000)
+
+      await this.gpsService.portsTermination()
+
+      await sleep(1000)
+
+      await this.msService.portsTermination()
+
+      await sleep(1000)
+
+      for (const interval of global.activeIntervals) {
+        clearInterval(interval)
+      }
+
+      this.logger.warn(`stopped ${global.activeIntervals.length} current active threads.`)
+
+      global.activeIntervals = []
+
+      await sleep(1000)
+
+      this.inspection = null
+      this.portsInitializing = false
+      this.portsInitialized = false
+      this.gpsInitializing = false
+      this.gpsInitialized = false
+      this.firstStartDT = false
+      this.tryTofirstStartDT = false
+      return { msg: 'DT stopped successfully.' }
+    }
+    else {
+      return { msg: 'There is no DT still.' }
     }
   }
 
@@ -339,23 +385,24 @@ export class ProbService implements OnModuleInit {
     this.logger.error(JSON.stringify(inspection))
 
     if (inspection) {
-      const gsmIdleData = await this.gsmIdlesRepo.find({ where: { inspection: { id: inspection.id } }, relations: { location: true, inspection: true } })
+      const gsmIdleData = await this.gpsDataRepo.find({ where: { inspection: { id: inspectionId } }, relations: { gsmIdleSamples: true } })
       const gsmIdle_kmlContent = this.generateKMLContent(
-        gsmIdleData.filter(item => !!item.location)
+        gsmIdleData
+          .map(x => ({ ...x, ...x.gsmIdleSamples[0] }))
           .map(point => ({
             location: {
-              latitude: point.location.latitude,
-              longitude: point.location.longitude
+              latitude: point.latitude,
+              longitude: point.longitude
             },
             data: {
-              pointValue: Number(point.rxlev),
+              pointValue: (!Number.isNaN(+point.rxlev)) ? Number(point.rxlev) : '-',
               valueName: 'RxLev',
-              pointColor: this.getRxLevColor(Number(point.rxlev)),
-              pointMNC: point.mnc,
-              pointMCC: point.mcc,
-              pointTech: point.tech,
+              pointColor: this.getRxLevColor((!Number.isNaN(+point.rxlev)) ? Number(point.rxlev) : '-'),
+              pointMNC: point.mnc || '-',
+              pointMCC: point.mcc || '-',
+              pointTech: point.tech || '-',
               pointCallStatus: callStatus.Idle,
-              pointTCH: point.tch
+              pointTCH: point.tch || '-'
             }
           })),
         inspection,
@@ -366,23 +413,24 @@ export class ProbService implements OnModuleInit {
       fs.writeFileSync(gsmIdle_filePath, gsmIdle_kmlContent);
 
 
-      const gsmLongCallData = await this.gsmLongCallRepo.find({ where: { inspection: { id: inspection.id } }, relations: { location: true, inspection: true } })
+      const gsmLongCallData = await this.gpsDataRepo.find({ where: { inspection: { id: inspectionId } }, relations: { gsmLongCallSamples: true } })
       const gsmLongCall_kmlContent = this.generateKMLContent(
-        gsmLongCallData.filter(item => !!item.location)
+        gsmLongCallData
+          .map(x => ({ ...x, ...x.gsmLongCallSamples[0] }))
           .map(point => ({
             location: {
-              latitude: point.location.latitude,
-              longitude: point.location.longitude
+              latitude: point.latitude,
+              longitude: point.longitude
             },
             data: {
-              pointValue: Number(point.rxqualsub),
+              pointValue: (!Number.isNaN(+point.rxqualsub)) ? Number(point.rxqualsub) : '-',
               valueName: 'RxQualSUB',
-              pointColor: this.getRxQualColor(Number(point.rxqualsub)),
-              pointMNC: point.mnc,
-              pointMCC: point.mcc,
-              pointTech: point.tech,
+              pointColor: this.getRxQualColor((!Number.isNaN(+point.rxqualsub)) ? Number(point.rxqualsub) : '-'),
+              pointMNC: point.mnc || '-',
+              pointMCC: point.mcc || '-',
+              pointTech: point.tech || '-',
               pointCallStatus: point.callingStatus,
-              pointTCH: point.tch
+              pointTCH: point.tch || '-'
             }
           })),
         inspection,

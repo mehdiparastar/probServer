@@ -28,7 +28,8 @@ const sleep = async (milisecond: number) => {
 export class MSService {
     private readonly logger = new Logger(MSService.name);
     private initializedPorts: { [key: string]: SerialPort } = {}
-    private dmPorts = [2, 6, 10, 14, 18, 22, 26, 30]
+    private dmPorts = [14] //[2, 6, 10, 14, 18, 22, 26, 30]
+    private noCoverageCheck: { [key: string]: boolean } = {}
     private moduleInfo: { [key: string]: { modelName: string, revision: string } } = {}
     private moduleIMEI: { [key: string]: string } = {}
     private simIMSI: { [key: string]: string } = {}
@@ -44,6 +45,26 @@ export class MSService {
     constructor(
         @InjectRepository(MSData) private msDataRepo: Repository<MSData>,
     ) { }
+
+    async portsTermination() {
+        this.moduleInfo = {}
+        this.moduleIMEI = {}
+        this.simIMSI = {}
+        this.simStatus = {}
+        this.clearStorage = {}
+        this.callStatus = {}
+        this.moduleFullFunctionality = {}
+        this.turnOffData = {}
+        this.currentNetwork = {}
+        this.allTechMode = {}
+        this.dmPortIntervalId = {}
+
+        for (const dmPort of this.dmPorts) {
+            this.initializedPorts[`ttyUSB${dmPort}`].close()
+            this.logger.debug(`port ${dmPort} terminate successfully.`)
+        }
+        this.initializedPorts = {}
+    }
 
     async portsInitializing(inspection: Inspection) {
         for (const dmPort of this.dmPorts) {
@@ -62,13 +83,14 @@ export class MSService {
                     }
                 },
                 2000)
+            global.activeIntervals.push(this.dmPortIntervalId[`ttyUSB${dmPort}`])
             await this.waitForNextPortInit(dmPort)
         }
         await sleep(5000)
 
         const res = []
         for (const dmPort of this.dmPorts) {
-            const [find] = await this.msDataRepo.find({ where: { inspection: inspection, IMEI: this.moduleIMEI[`ttyUSB${dmPort}`] } })
+            const [find] = await this.msDataRepo.find({ where: { inspection: { id: inspection.id }, IMEI: this.moduleIMEI[`ttyUSB${dmPort}`] } })
             if (!find) {
                 const newEntry = this.msDataRepo.create({
                     modelName: this.moduleInfo[`ttyUSB${dmPort}`].modelName,
@@ -112,6 +134,11 @@ export class MSService {
             }
             else {
                 const port = this.initializedPorts[`ttyUSB${dmPort}`]
+
+                if (!this.noCoverageCheck[`ttyUSB${dmPort}`]) {
+                    port.write(commands.getALLTECHNetworkParameters)
+                    this.logger.log('getALLTECHNetworkParameters')
+                }
                 if (!this.moduleInfo[`ttyUSB${dmPort}`]) {
                     port.write(commands.getModuleInfo)
                     this.logger.log('getModuleInfo')
@@ -132,10 +159,6 @@ export class MSService {
                     port.write(commands.clearUFSStorage)
                     this.logger.log('clearUFSStorage')
                 }
-                if (!this.callStatus[`ttyUSB${dmPort}`]) {
-                    port.write(commands.getCallStatus)
-                    this.logger.log('getCallStatus')
-                }
                 if (!this.moduleFullFunctionality[`ttyUSB${dmPort}`]) {
                     port.write(commands.moduleFullFunctionality)
                     this.logger.log('moduleFullFunctionality')
@@ -152,6 +175,10 @@ export class MSService {
                     port.write(commands.lockALLTECH)
                     this.logger.log('allTechMode')
                 }
+                if (!this.callStatus[`ttyUSB${dmPort}`]) {
+                    port.write(commands.getCallStatus)
+                    this.logger.log('getCallStatus')
+                }
                 this.logger.log(`port ${dmPort} have been initialized.`)
             }
         }
@@ -167,6 +194,7 @@ export class MSService {
 
                 // this.logger.log(`port ${dmPort} : ${JSON.stringify(response)}`)
 
+                const noCoverageCheckMatch = (JSON.stringify(response).indexOf('servingcell') >= 0 && JSON.stringify(response).indexOf('SEARCH') >= 0)
                 const moduleInformationMatch = response.match(correctPattern.moduleInformation)
                 const moduleIMEIMatch = response.match(correctPattern.moduleIMEI)
                 const simIMSIMatch = response.match(correctPattern.simIMSI)
@@ -187,6 +215,10 @@ export class MSService {
                 const currentNetworkMatch = response.match(correctPattern.currentNetwork)
                 const allTechModeMatch = response.match(correctPattern.lockALLTECH)
 
+                if (noCoverageCheckMatch) {
+                    this.noCoverageCheck[`ttyUSB${dmPort}`] = !!noCoverageCheckMatch
+                }
+
                 if (moduleInformationMatch) {
                     this.moduleInfo[`ttyUSB${dmPort}`] = { ...this.moduleInfo[`ttyUSB${dmPort}`], modelName: moduleInformationMatch[1], revision: moduleInformationMatch[2] }
                 }
@@ -197,6 +229,7 @@ export class MSService {
 
                 if (simIMSIMatch) {
                     this.simIMSI[`ttyUSB${dmPort}`] = simIMSIMatch[1]
+                    this.logger.log(`port ${dmPort} imsi is: ${this.simIMSI[`ttyUSB${dmPort}`]}`)
                 }
 
                 if (simStatusMatch) {
@@ -209,7 +242,7 @@ export class MSService {
 
                 if (this.simIMSI && this.simIMSI[`ttyUSB${dmPort}`]) {
                     if (callStatusMatch) {
-                        if (callStatusMatch[1] === '4') {
+                        if (callStatusMatch[1] === '4' || this.noCoverageCheck[`ttyUSB${dmPort}`] === true) {
                             this.callStatus[`ttyUSB${dmPort}`] = !!callStatusMatch
                             port.write(commands.hangUpCall)
                         }
@@ -255,6 +288,7 @@ export class MSService {
 
     checkPortTrueInit(dmPort: number) {
         return (
+            (!!this.noCoverageCheck[`ttyUSB${dmPort}`] === true || !!this.noCoverageCheck[`ttyUSB${dmPort}`] === false) &&
             !!this.moduleInfo[`ttyUSB${dmPort}`] &&
             !!this.moduleIMEI[`ttyUSB${dmPort}`] &&
             !!this.simIMSI[`ttyUSB${dmPort}`] &&

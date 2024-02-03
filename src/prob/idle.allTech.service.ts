@@ -14,6 +14,8 @@ const correctPattern = {
     'getGSMNetworkParameters': /.*\+QENG: "servingcell","(\w+)","(\w+)",(\d+),(\d+),(\d+),(\w+),(\d+),(\d+),([-]|\w+),(-?\d+),(\d+),(\d+),(\d+),(\d+),(\d+),(\d+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),"([-]|\w+)"\r\n\r\nOK\r\n/,
     'getWCDMANetworkParameters': /.*\+QENG: "servingcell","(-?\w+)","(-?\w+)",(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+)/,
     'getLTENetworkParameters': /.*\+QENG: "servingcell","(-?\w+)","(-?\w+)","(-?\w+)",(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-w+?|-?).*/,
+    'noCoveragePrameters': /.*\+QENG: "servingcell","SEARCH".*/,
+
 }
 
 const sleep = async (milisecond: number) => {
@@ -279,6 +281,127 @@ export class ALLTECHIdleService {
                     const save = await this.alltechIdlesRepo.save(newEntry)
                 }
 
+                const noCoveragePrametersMatch = response.match(correctPattern.noCoveragePrameters)
+                if (noCoveragePrametersMatch) {
+                    if (global.recording === true) {
+                        const allTechData_noCov = {
+                            tech: '-',
+                            mcc: '-',
+                            mnc: '-',
+                            lac: '-',
+                            cellid: '-',
+
+                            bsic: '-',
+                            arfcn: '-',
+                            bandgsm: '-',
+                            rxlev: '-',
+                            txp: '-',
+                            tla: '-',
+                            drx: '-',
+                            c1: '-',
+                            c2: '-',
+                            gprs: '-',
+                            tch: '-',
+                            ts: '-',
+                            ta: '-',
+                            maio: '-',
+                            hsn: '-',
+                            rxlevsub: '-',
+                            rxlevfull: '-',
+                            rxqualsub: '-',
+                            rxqualfull: '-',
+                            voicecodec: '-',
+
+                            uarfcn: '-',
+                            psc: '-',
+                            rac: '-',
+                            rscp: '-',
+                            ecio: '-',
+                            phych: '-',
+                            sf: '-',
+                            slot: '-',
+                            speech_code: '-',
+                            comMod: '-',
+
+                            pcid: '-',
+                            earfcn: '-',
+                            freq_band_ind: '-',
+                            ul_bandwidth: '-',
+                            dl_bandwidth: '-',
+                            tac: '-',
+                            rsrp: '-',
+                            rsrq: '-',
+                            rssi: '-',
+                            sinr: '-',
+                            srxlev: '-',
+                        }
+
+
+                        const location = await this.gpsDataRepo
+                            .createQueryBuilder('gps_data')
+                            .where('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt)) <= 2000000') // One second has 1,000,000 microseconds
+                            .orderBy('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt))', 'ASC')
+                            .setParameter('desiredCreatedAt', new Date())
+                            .getOne();
+
+                        const newEntry = this.alltechIdlesRepo.create({
+                            tech: allTechData_noCov.tech,
+                            mcc: allTechData_noCov.mcc,
+                            mnc: allTechData_noCov.mnc,
+                            lac: allTechData_noCov.lac,
+                            cellid: allTechData_noCov.cellid,
+
+                            bsic: allTechData_noCov.bsic,
+                            arfcn: allTechData_noCov.arfcn,
+                            bandgsm: allTechData_noCov.bandgsm,
+                            rxlev: allTechData_noCov.rxlev,
+                            txp: allTechData_noCov.txp,
+                            tla: allTechData_noCov.tla,
+                            drx: allTechData_noCov.drx,
+                            c1: allTechData_noCov.c1,
+                            c2: allTechData_noCov.c2,
+                            gprs: allTechData_noCov.gprs,
+                            tch: allTechData_noCov.tch,
+                            ts: allTechData_noCov.ts,
+                            ta: allTechData_noCov.ta,
+                            maio: allTechData_noCov.maio,
+                            hsn: allTechData_noCov.hsn,
+                            rxlevsub: allTechData_noCov.rxlevsub,
+                            rxlevfull: allTechData_noCov.rxlevfull,
+                            rxqualsub: allTechData_noCov.rxqualsub,
+                            rxqualfull: allTechData_noCov.rxqualfull,
+                            voicecodec: allTechData_noCov.voicecodec,
+
+                            uarfcn: allTechData_noCov.uarfcn,
+                            psc: allTechData_noCov.psc,
+                            rac: allTechData_noCov.rac,
+                            rscp: allTechData_noCov.rscp,
+                            ecio: allTechData_noCov.ecio,
+                            phych: allTechData_noCov.phych,
+                            sf: allTechData_noCov.sf,
+                            slot: allTechData_noCov.slot,
+                            speech_code: allTechData_noCov.speech_code,
+                            comMod: allTechData_noCov.comMod,
+
+                            pcid: allTechData_noCov.pcid,
+                            earfcn: allTechData_noCov.earfcn,
+                            freq_band_ind: allTechData_noCov.freq_band_ind,
+                            ul_bandwidth: allTechData_noCov.ul_bandwidth,
+                            dl_bandwidth: allTechData_noCov.dl_bandwidth,
+                            tac: allTechData_noCov.tac,
+                            rsrp: allTechData_noCov.rsrp,
+                            rsrq: allTechData_noCov.rsrq,
+                            rssi: allTechData_noCov.rssi,
+                            sinr: allTechData_noCov.sinr,
+                            srxlev: allTechData_noCov.srxlev,
+
+                            inspection: inspection,
+                            location: location
+                        })
+                        const save = await this.alltechIdlesRepo.save(newEntry)
+                    }
+                }
+
             })
 
             port.on('error', (err) => {
@@ -292,9 +415,11 @@ export class ALLTECHIdleService {
     async msItrationDuty(dmPort: number, interval: number = 1000) {
         const port = this.initializedPorts[`ttyUSB${dmPort}`]
 
-        setInterval(() => {
+        const intervalId = setInterval(() => {
             port.write(commands.getALLTECHNetworkParameters)
         }, interval)
+
+        global.activeIntervals.push(intervalId)
     }
 
     checkPortTrueInit(dmPort: number) {

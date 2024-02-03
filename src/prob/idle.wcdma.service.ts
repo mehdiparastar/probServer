@@ -12,6 +12,7 @@ import { GPSData } from './entities/gps-data.entity';
 const correctPattern = {
     'lockWCDMA': /AT\+QCFG="nwscanmode",2\r\r\nOK\r\n/,
     'getWCDMANetworkParameters': /.*\+QENG: "servingcell","(-?\w+)","(-?\w+)",(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),(-?\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+),([-]|\w+)/,
+    'noCoveragePrameters': /.*\+QENG: "servingcell","SEARCH".*/,
 }
 
 const sleep = async (milisecond: number) => {
@@ -155,6 +156,58 @@ export class WCDMAIdleService {
                     }
                 }
 
+                const noCoveragePrametersMatch = response.match(correctPattern.noCoveragePrameters)
+                if (noCoveragePrametersMatch) {
+                    if (global.recording === true) {
+                        const wcdmaData_noCov = {
+                            'tech': '-',
+                            'mcc': '-',
+                            'mnc': '-',
+                            'lac': '-',
+                            'cellid': '-',
+                            'uarfcn': '-',
+                            'psc': '-',
+                            'rac': '-',
+                            'rscp': '-',
+                            'ecio': '-',
+                            'phych': '-',
+                            'sf': '-',
+                            'slot': '-',
+                            'speech_code': '-',
+                            'comMod': '-',
+                        }
+
+
+                        const location = await this.gpsDataRepo
+                            .createQueryBuilder('gps_data')
+                            .where('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt)) <= 2000000') // One second has 1,000,000 microseconds
+                            .orderBy('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt))', 'ASC')
+                            .setParameter('desiredCreatedAt', new Date())
+                            .getOne();
+
+                        const newEntry = this.wcdmaIdlesRepo.create({
+                            tech: wcdmaData_noCov.tech,
+                            mcc: wcdmaData_noCov.mcc,
+                            mnc: wcdmaData_noCov.mnc,
+                            lac: wcdmaData_noCov.lac,
+                            cellid: wcdmaData_noCov.cellid,
+                            uarfcn: wcdmaData_noCov.uarfcn,
+                            psc: wcdmaData_noCov.psc,
+                            rac: wcdmaData_noCov.rac,
+                            rscp: wcdmaData_noCov.rscp,
+                            ecio: wcdmaData_noCov.ecio,
+                            phych: wcdmaData_noCov.phych,
+                            sf: wcdmaData_noCov.sf,
+                            slot: wcdmaData_noCov.slot,
+                            speech_code: wcdmaData_noCov.speech_code,
+                            comMod: wcdmaData_noCov.comMod,
+                            inspection: inspection,
+                            location: location
+                        })
+                        const save = await this.wcdmaIdlesRepo.save(newEntry)
+                    }
+                }
+
             })
 
             port.on('error', (err) => {
@@ -168,9 +221,11 @@ export class WCDMAIdleService {
     async msItrationDuty(dmPort: number, interval: number = 1000) {
         const port = this.initializedPorts[`ttyUSB${dmPort}`]
 
-        setInterval(() => {
+        const intervalId = setInterval(() => {
             port.write(commands.getWCDMANetworkParameters)
         }, interval)
+
+        global.activeIntervals.push(intervalId)
     }
 
     checkPortTrueInit(dmPort: number) {

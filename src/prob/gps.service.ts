@@ -7,6 +7,7 @@ import { commands } from "./enum/commands.enum";
 import { MSData } from "./entities/ms-data.entity";
 import { scenarioName } from "./enum/scenarioName.enum";
 import { Inspection } from "./entities/inspection.entity";
+import { sleep } from "./prob.service";
 
 
 function convertDMStoDD(degrees: string, direction: string) {
@@ -15,13 +16,15 @@ function convertDMStoDD(degrees: string, direction: string) {
     return direction === 'S' || direction === 'W' ? `${-dd}` : `${dd}`;
 }
 
+const primaryNMEAPorts = [1, 5, 9, 13, 17, 21, 25, 29]
+const primaryDMPorts = [2, 6, 10, 14, 18, 22, 26, 30]
 
 @Injectable()
 export class GPSService {
     private readonly logger = new Logger(GPSService.name);
-    private nmeaPorts = [1, 5, 9, 13, 17, 21, 25, 29]
+    private nmeaPorts = primaryNMEAPorts
     private initializedPorts: { [key: string]: SerialPort } = {}
-    private dmPorts = [2, 6, 10, 14, 18, 22, 26, 30]
+    private dmPorts = primaryDMPorts
     private selectedGPSPort: number
     private disabledGPSPorts: number[] = []
     private gpsPort: number
@@ -53,6 +56,41 @@ export class GPSService {
         return { time, latitude, longitude, groundSpeed, trackAngle };
     }
 
+    async portsTermination() {
+
+        for (const portNumber of ([...primaryDMPorts, ...primaryNMEAPorts])) {
+            this.initializedPorts[`ttyUSB${portNumber}`].close()
+            this.logger.debug(`port ${portNumber} terminate successfully.`)
+        }
+
+        const port = new SerialPort({ path: `/dev/ttyUSB${primaryDMPorts[primaryNMEAPorts.indexOf(this.selectedGPSPort)]}`, baudRate: 115200 });
+
+        port.on('open', async () => {
+            this.logger.warn(`try to disable gps on port ${this.selectedGPSPort} from ${primaryDMPorts[primaryNMEAPorts.indexOf(this.selectedGPSPort)]}`)
+            port.write(commands.disableGPS)
+        })
+
+
+        port.on('data', async (data) => {
+            const response = data.toString()
+            this.logger.warn(response)
+
+            if (response.indexOf('OK') > 0) {
+                this.logger.warn('disabled')
+                port.close()
+            }
+        })
+
+
+        await sleep(2000)
+
+        this.selectedGPSPort = undefined
+        this.disabledGPSPorts = []
+        this.gpsPort = undefined
+        this.initializingEnd = false
+        this.initializedPorts = {}
+    }
+
     async portsInitializing(inspection: Inspection) {
 
         for (const portNumber of ([...this.dmPorts, ...this.nmeaPorts])) {
@@ -77,7 +115,6 @@ export class GPSService {
 
                 port.on('data', async (data) => {
                     const response = data.toString()
-
                     // if (response.indexOf('GPS') >= 0) {
                     //     this.logger.log(JSON.stringify(response))
                     // }

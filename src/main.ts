@@ -7,7 +7,8 @@ import { join } from 'path';
 
 async function bootstrap() {
   global.recording = false
-  
+  global.activeIntervals = []
+
   const app = await NestFactory.create(AppModule);
 
   const config = new DocumentBuilder()

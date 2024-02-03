@@ -62,6 +62,11 @@ export class ProbController {
     return this.probService.start()
   }
 
+  @Get('stop-dt')
+  stopDT() {
+    return this.probService.stop()
+  }
+
   @Get('start-recording')
   startRecording() {
     return this.probService.startRecording()
