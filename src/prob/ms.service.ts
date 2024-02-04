@@ -16,7 +16,7 @@ const correctPattern = {
     'callStatus': /.*CPAS: (\d+).*/,
     'moduleFullFunctionality': /.*CFUN=1.*OK.*/,
     'turnOffData': /.*QIDEACT=1.*OK.*/,
-    'currentNetwork': /.*COPS.*"([^"]+)".*/,
+    'currentNetwork': /.*COPS.*"([^"]+)".*|.*COPS: (\d+).*/,
     'lockALLTECH': /AT\+QCFG="nwscanmode",0\r\r\nOK\r\n/,
 }
 
@@ -28,7 +28,7 @@ const sleep = async (milisecond: number) => {
 export class MSService {
     private readonly logger = new Logger(MSService.name);
     private initializedPorts: { [key: string]: SerialPort } = {}
-    private dmPorts = [14] //[2, 6, 10, 14, 18, 22, 26, 30]
+    private dmPorts = [2, 6, 10, 14, 18, 22, 26, 30]
     private noCoverageCheck: { [key: string]: boolean } = {}
     private moduleInfo: { [key: string]: { modelName: string, revision: string } } = {}
     private moduleIMEI: { [key: string]: string } = {}
@@ -265,7 +265,7 @@ export class MSService {
                 }
 
                 if (currentNetworkMatch) {
-                    if (currentNetworkMatch[1].indexOf('Irancell') >= 0 || currentNetworkMatch[1].indexOf('MCI') >= 0) {
+                    if (currentNetworkMatch[2]==="0" || currentNetworkMatch[1].indexOf('Irancell') >= 0 || currentNetworkMatch[1].indexOf('MCI') >= 0) {
                         this.currentNetwork[`ttyUSB${dmPort}`] = !!currentNetworkMatch
                     }
                     else {

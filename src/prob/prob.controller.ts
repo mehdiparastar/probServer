@@ -77,10 +77,6 @@ export class ProbController {
     return this.probService.pauseRecording()
   }
 
-  // @Post('pause')
-  // pause() {
-  //   return this.probService.pauseLog()
-  // }
 
   // @Get(':id')
   // findOne(@Param('id') id: string) {

@@ -58,7 +58,7 @@ interface KMLData {
     pointMCC: string;
     pointTech: string;
     pointCallStatus: callStatus;
-    pointTCH: string;
+    pointTCH?: string;
   };
 }
 
@@ -290,29 +290,29 @@ export class ProbService implements OnModuleInit {
 
       this.tryTofirstStartDT = true
 
-      // this.logger.error('------------------- start gsm idle service -----------------------')
-      // await this.gsmIdleService.portsInitializing(2, this.inspection)
-      // this.logger.error('------------------- end gsm idle service -----------------------')
+      this.logger.error('------------------- start gsm idle service -----------------------')
+      await this.gsmIdleService.portsInitializing(2, this.inspection)
+      this.logger.error('------------------- end gsm idle service -----------------------')
 
-      // this.logger.error('------------------- start wcdma idle service -----------------------')
-      // await this.wcdmaIdleService.portsInitializing(6, this.inspection)
-      // this.logger.error('------------------- end wcdma idle service -----------------------')
+      this.logger.error('------------------- start wcdma idle service -----------------------')
+      await this.wcdmaIdleService.portsInitializing(6, this.inspection)
+      this.logger.error('------------------- end wcdma idle service -----------------------')
 
-      // this.logger.error('------------------- start lte idle service -----------------------')
-      // await this.lteIdleService.portsInitializing(10, this.inspection)
-      // this.logger.error('------------------- end lte idle service -----------------------')
+      this.logger.error('------------------- start lte idle service -----------------------')
+      await this.lteIdleService.portsInitializing(10, this.inspection)
+      this.logger.error('------------------- end lte idle service -----------------------')
 
       this.logger.error('------------------- start alltech idle service -----------------------')
       await this.alltechIdleService.portsInitializing(14, this.inspection)
       this.logger.error('------------------- end alltech idle service -----------------------')
 
-      // this.logger.error('------------------- start gsm LongCall service -----------------------')
-      // await this.gsmLongCallService.portsInitializing(18, this.inspection)
-      // this.logger.error('------------------- end gsm LongCall service -----------------------')
+      this.logger.error('------------------- start gsm LongCall service -----------------------')
+      await this.gsmLongCallService.portsInitializing(18, this.inspection)
+      this.logger.error('------------------- end gsm LongCall service -----------------------')
 
-      // this.logger.error('------------------- start wcdma LongCall service -----------------------')
-      // await this.wcdmaLongCallService.portsInitializing(22, this.inspection)
-      // this.logger.error('------------------- end wcdma LongCall service -----------------------')
+      this.logger.error('------------------- start wcdma LongCall service -----------------------')
+      await this.wcdmaLongCallService.portsInitializing(22, this.inspection)
+      this.logger.error('------------------- end wcdma LongCall service -----------------------')
 
 
       this.firstStartDT = true
@@ -332,6 +332,12 @@ export class ProbService implements OnModuleInit {
 
       await sleep(1000)
 
+      for (const interval of global.activeIntervals) {
+        clearInterval(interval)
+      }
+
+      await sleep(1000)
+
       await this.gpsService.portsTermination()
 
       await sleep(1000)
@@ -340,15 +346,9 @@ export class ProbService implements OnModuleInit {
 
       await sleep(1000)
 
-      for (const interval of global.activeIntervals) {
-        clearInterval(interval)
-      }
-
       this.logger.warn(`stopped ${global.activeIntervals.length} current active threads.`)
 
       global.activeIntervals = []
-
-      await sleep(1000)
 
       this.inspection = null
       this.portsInitializing = false
@@ -357,6 +357,7 @@ export class ProbService implements OnModuleInit {
       this.gpsInitialized = false
       this.firstStartDT = false
       this.tryTofirstStartDT = false
+
       return { msg: 'DT stopped successfully.' }
     }
     else {
@@ -409,8 +410,62 @@ export class ProbService implements OnModuleInit {
         'gsmIdle'
       )
 
-      const gsmIdle_filePath = 'gsmIdle.kml';
+      const gsmIdle_filePath = 'reports/gsmIdle.kml';
       fs.writeFileSync(gsmIdle_filePath, gsmIdle_kmlContent);
+
+
+      const wcdmaIdleData = await this.gpsDataRepo.find({ where: { inspection: { id: inspectionId } }, relations: { wcdmaIdleSamples: true } })
+      const wcdmaIdle_kmlContent = this.generateKMLContent(
+        wcdmaIdleData
+          .map(x => ({ ...x, ...x.wcdmaIdleSamples[0] }))
+          .map(point => ({
+            location: {
+              latitude: point.latitude,
+              longitude: point.longitude
+            },
+            data: {
+              pointValue: (!Number.isNaN(+point.rscp)) ? Number(point.rscp) : '-',
+              valueName: 'RSCP',
+              pointColor: this.getRxLevColor((!Number.isNaN(+point.rscp)) ? Number(point.rscp) : '-'),
+              pointMNC: point.mnc || '-',
+              pointMCC: point.mcc || '-',
+              pointTech: point.tech || '-',
+              pointCallStatus: callStatus.Idle,
+            }
+          })),
+        inspection,
+        'wcdmaIdle'
+      )
+
+      const wcdmaIdle_filePath = 'reports/wcdmaIdle.kml';
+      fs.writeFileSync(wcdmaIdle_filePath, wcdmaIdle_kmlContent);
+
+
+      const lteIdleData = await this.gpsDataRepo.find({ where: { inspection: { id: inspectionId } }, relations: { lteIdleSamples: true } })
+      const lteIdle_kmlContent = this.generateKMLContent(
+        lteIdleData
+          .map(x => ({ ...x, ...x.lteIdleSamples[0] }))
+          .map(point => ({
+            location: {
+              latitude: point.latitude,
+              longitude: point.longitude
+            },
+            data: {
+              pointValue: (!Number.isNaN(+point.rsrp)) ? Number(point.rsrp) : '-',
+              valueName: 'RSRP',
+              pointColor: this.getRxLevColor((!Number.isNaN(+point.rsrp)) ? Number(point.rsrp) : '-'),
+              pointMNC: point.mnc || '-',
+              pointMCC: point.mcc || '-',
+              pointTech: point.tech || '-',
+              pointCallStatus: callStatus.Idle,
+            }
+          })),
+        inspection,
+        'lteIdle'
+      )
+
+      const lteIdle_filePath = 'reports/lteIdle.kml';
+      fs.writeFileSync(lteIdle_filePath, lteIdle_kmlContent);
 
 
       const gsmLongCallData = await this.gpsDataRepo.find({ where: { inspection: { id: inspectionId } }, relations: { gsmLongCallSamples: true } })
@@ -437,8 +492,36 @@ export class ProbService implements OnModuleInit {
         'gsmLongCall'
       )
 
-      const gsmLongCall_filePath = 'gsmLongCall.kml';
+      const gsmLongCall_filePath = 'reports/gsmLongCall.kml';
       fs.writeFileSync(gsmLongCall_filePath, gsmLongCall_kmlContent);
+
+
+      const wcdmaLongCallData = await this.gpsDataRepo.find({ where: { inspection: { id: inspectionId } }, relations: { wcdmaLongCallSamples: true } })
+      const wcdmaLongCall_kmlContent = this.generateKMLContent(
+        wcdmaLongCallData
+          .map(x => ({ ...x, ...x.wcdmaLongCallSamples[0] }))
+          .map(point => ({
+            location: {
+              latitude: point.latitude,
+              longitude: point.longitude
+            },
+            data: {
+              pointValue: (!Number.isNaN(+point.ecio)) ? Number(point.ecio) : '-',
+              valueName: 'RxQualSUB',
+              pointColor: this.getRxQualColor((!Number.isNaN(+point.ecio)) ? Number(point.ecio) : '-'),
+              pointMNC: point.mnc || '-',
+              pointMCC: point.mcc || '-',
+              pointTech: point.tech || '-',
+              pointCallStatus: point.callingStatus,
+            }
+          })),
+        inspection,
+        'wcdmaLongCall'
+      )
+
+      const wcdmaLongCall_filePath = 'reports/wcdmaLongCall.kml';
+      fs.writeFileSync(wcdmaLongCall_filePath, wcdmaLongCall_kmlContent);
+
 
       return { msg: `KMLs Created successfully.` }
 
