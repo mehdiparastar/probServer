@@ -1,11 +1,19 @@
 import { User as UserEntity } from "src/users/entities/user.entity";
 import { DataSourceOptions } from "typeorm";
+import { dtCurrentStatusENUM } from '../prob/enum/dtcurrentStatus.enum'
 
 export { };
 
 declare global {
     var recording: boolean
     var activeIntervals: NodeJS.Timeout[]
+
+    var portsInitingStatus = [{
+        port: number,
+        progress: number
+    }]
+
+    var dtCurrentStatus: dtCurrentStatusENUM
 
     interface IconfigService {
         CLIENT_PORT?: number;
@@ -34,32 +42,4 @@ declare global {
         production?: DataSourceOptions;
     }
 
-    namespace Express {
-        interface Request {
-            user?: Partial<UserEntity>;
-        }
-    }
-
-    interface IGoogleUser {
-        provider: string;
-        providerId: string;
-        name: string;
-        email: string;
-        photo: string;
-        accessToken?: string;
-        refreshToken?: string;
-    }
-
-    interface IJwtPayload {
-        sub: number;
-        email: string;
-    }
-
-    interface IJWTTokensPair {
-        accessToken: string;
-        refreshToken: string;
-    }
-
-    type SocketWithAuth = Socket & AuthPayload;
-    type RequestWithAuth = Request & AuthPayload;
 }

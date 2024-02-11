@@ -23,6 +23,7 @@ import { LTEIdleService } from './idle.lte.service';
 import { ALLTECHIdleService } from './idle.allTech.service';
 import { GSMLongCallService } from './longCall.gsm.service';
 import { WCDMALongCallService } from './longCall.wcdma.service';
+import { ProbGateway } from './prob.gateway';
 
 @Module({
   imports: [
@@ -52,7 +53,8 @@ import { WCDMALongCallService } from './longCall.wcdma.service';
     LTEIdleService,
     ALLTECHIdleService,
     GSMLongCallService,
-    WCDMALongCallService
+    WCDMALongCallService,
+    ProbGateway
   ],
 })
 export class ProbModule { }

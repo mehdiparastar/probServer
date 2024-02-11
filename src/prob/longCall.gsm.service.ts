@@ -255,7 +255,6 @@ export class GSMLongCallService {
                 }
 
                 const callStatusMatch = response.match(correctPattern.callStatus)
-                this.logger.warn(callStatusMatch)
                 if (callStatusMatch) {
                     const callStatusData = {
                         'statusNo': callStatusMatch[1].trim()

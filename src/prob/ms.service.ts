@@ -6,6 +6,7 @@ import { SerialPort } from "serialport";
 import { commands } from "./enum/commands.enum";
 import { MSData } from "./entities/ms-data.entity";
 import { Inspection } from "./entities/inspection.entity";
+import { ProbGateway } from "./prob.gateway";
 
 const correctPattern = {
     'moduleInformation': /.*Quectel\r\n(\w+)\r\nRevision: (\w+)\r\n.*/,
@@ -24,11 +25,13 @@ const sleep = async (milisecond: number) => {
     await new Promise(resolve => setTimeout(resolve, milisecond))
 }
 
+export const allDMPorts = [2, 6, 10, 14, 18, 22, 26, 30]
+
 @Injectable()
 export class MSService {
     private readonly logger = new Logger(MSService.name);
     private initializedPorts: { [key: string]: SerialPort } = {}
-    private dmPorts = [2, 6, 10, 14, 18, 22, 26, 30]
+    private dmPorts = allDMPorts
     private noCoverageCheck: { [key: string]: boolean } = {}
     private moduleInfo: { [key: string]: { modelName: string, revision: string } } = {}
     private moduleIMEI: { [key: string]: string } = {}
@@ -44,6 +47,7 @@ export class MSService {
 
     constructor(
         @InjectRepository(MSData) private msDataRepo: Repository<MSData>,
+        private readonly probSocketGateway: ProbGateway,
     ) { }
 
     async portsTermination() {
@@ -70,9 +74,9 @@ export class MSService {
         for (const dmPort of this.dmPorts) {
             this.dmPortIntervalId[`ttyUSB${dmPort}`] = setInterval(
                 async () => {
-                    const cond = this.checkPortTrueInit(dmPort)
+                    const progress = this.checkPortTrueInit(dmPort)
 
-                    if (cond) {
+                    if (progress === 100) {
                         clearInterval(this.dmPortIntervalId[`ttyUSB${dmPort}`])
                         this.initializedPorts[`ttyUSB${dmPort}`].close()
                         this.logger.debug(`port ${dmPort} initialized successfully then port closed.`)
@@ -265,7 +269,7 @@ export class MSService {
                 }
 
                 if (currentNetworkMatch) {
-                    if (currentNetworkMatch[2]==="0" || currentNetworkMatch[1].indexOf('Irancell') >= 0 || currentNetworkMatch[1].indexOf('MCI') >= 0) {
+                    if (currentNetworkMatch[2] === "0" || currentNetworkMatch[1].indexOf('Irancell') >= 0 || currentNetworkMatch[1].indexOf('MCI') >= 0) {
                         this.currentNetwork[`ttyUSB${dmPort}`] = !!currentNetworkMatch
                     }
                     else {
@@ -287,28 +291,37 @@ export class MSService {
     }
 
     checkPortTrueInit(dmPort: number) {
-        return (
-            (!!this.noCoverageCheck[`ttyUSB${dmPort}`] === true || !!this.noCoverageCheck[`ttyUSB${dmPort}`] === false) &&
-            !!this.moduleInfo[`ttyUSB${dmPort}`] &&
-            !!this.moduleIMEI[`ttyUSB${dmPort}`] &&
-            !!this.simIMSI[`ttyUSB${dmPort}`] &&
-            !!this.simStatus[`ttyUSB${dmPort}`] &&
-            !!this.clearStorage[`ttyUSB${dmPort}`] &&
-            !!this.callStatus[`ttyUSB${dmPort}`] &&
-            !!this.moduleFullFunctionality[`ttyUSB${dmPort}`] &&
-            !!this.turnOffData[`ttyUSB${dmPort}`] &&
-            !!this.currentNetwork[`ttyUSB${dmPort}`] &&
-            !!this.allTechMode[`ttyUSB${dmPort}`] &&
-            !!this.dmPortIntervalId[`ttyUSB${dmPort}`]
-        )
+        const p1 = (!!this.noCoverageCheck[`ttyUSB${dmPort}`] === true || !!this.noCoverageCheck[`ttyUSB${dmPort}`] === false) ? 1 : 0
+        const p2 = (!!this.moduleInfo[`ttyUSB${dmPort}`]) ? 1 : 0
+        const p3 = (!!this.moduleIMEI[`ttyUSB${dmPort}`]) ? 1 : 0
+        const p4 = (!!this.simIMSI[`ttyUSB${dmPort}`]) ? 1 : 0
+        const p5 = (!!this.simStatus[`ttyUSB${dmPort}`]) ? 1 : 0
+        const p6 = (!!this.clearStorage[`ttyUSB${dmPort}`]) ? 1 : 0
+        const p7 = (!!this.callStatus[`ttyUSB${dmPort}`]) ? 1 : 0
+        const p8 = (!!this.moduleFullFunctionality[`ttyUSB${dmPort}`]) ? 1 : 0
+        const p9 = (!!this.turnOffData[`ttyUSB${dmPort}`]) ? 1 : 0
+        const p10 = (!!this.currentNetwork[`ttyUSB${dmPort}`]) ? 1 : 0
+        const p11 = (!!this.allTechMode[`ttyUSB${dmPort}`]) ? 1 : 0
+        const p12 = (!!this.dmPortIntervalId[`ttyUSB${dmPort}`]) ? 1 : 0
+
+        const progress = Number((((p1 + p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9 + p10 + p11 + p12) / 12) * 100).toFixed(2))
+
+        return progress
     }
 
     waitForNextPortInit = (dmPort: number, timeout = 1000) => {
         return new Promise((resolve) => {
             const checkCondition = () => {
-                const cond = this.checkPortTrueInit(dmPort)
+                const progress = this.checkPortTrueInit(dmPort)
 
-                if (cond) {
+                global.portsInitingStatus = (!!global.portsInitingStatus.find(item => item.port === dmPort) ? [...global.portsInitingStatus] : [...global.portsInitingStatus, { port: dmPort, progress }])
+                    .map(item => item.port === dmPort ? ({ ...item, progress }) : item)
+
+                const isLoadingPortsIniting = !(global.portsInitingStatus.filter(item => item.progress === 100).length === allDMPorts.length)
+
+                this.probSocketGateway.emitPortsInitingStatus(dmPort, progress)
+
+                if (progress === 100) {
                     resolve(1);
                 } else {
                     setTimeout(checkCondition, timeout); // Adjust the interval as needed

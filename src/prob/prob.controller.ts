@@ -4,6 +4,7 @@ import { CreateProbDto } from './dto/create-prob.dto';
 import { UpdateProbDto } from './dto/update-prob.dto';
 import { ATCommandDto } from './dto/AT-command.dto'
 import { StartLogDto } from './dto/start-log.dto';
+import { dtCurrentStatusENUM } from './enum/dtcurrentStatus.enum';
 
 @Controller('prob')
 export class ProbController {
@@ -11,41 +12,11 @@ export class ProbController {
     private readonly probService: ProbService,
   ) { }
 
-  // @Post()
-  // create(@Body() createProbDto: CreateProbDto) {
-  //   return this.probService.create(createProbDto);
-  // }
+  @Get('prob-socket')
+  getProbSocket(){
+    return this.probService.getProbSocket()
+  }
 
-  // @Get()
-  // findAllModeles() {
-  //   return this.probService.findAllModules();
-  // }
-
-  // @Post('run-at-command')
-  // runATCommand(@Body() body: ATCommandDto) {
-  //   return this.probService.runATCommand(Number(body.portNumber), body.command)
-  // }
-
-  // @Get('port-initializing')
-  // portInitializing() {
-  //   // return this.probService.firstINIT()
-  //   return this.probService.allPortsInitializing()
-  // }
-
-  // @Get('get-modules-status')
-  // getModelesStatus() {
-  //   return this.probService.getModulesStatus()
-  // }
-
-  // @Get('enableGPS')
-  // async enablingGPS() {
-  //   return await this.probService.enablingGPS()
-  // }
-
-  // @Post('start')
-  // start(@Body() body: StartLogDto) {
-  //   return this.probService.startLog(body.type, body.code, body.expertId)
-  // }
 
   @Post('get-kml')
   getKML(@Body() body: { inspectionId: number }) {
@@ -77,6 +48,30 @@ export class ProbController {
     return this.probService.pauseRecording()
   }
 
+  @Get('portsInitingStatus')
+  portsInitingStatus() {
+    return global.portsInitingStatus
+  }
+
+  @Get('getDTCurrentStatus')
+  getDTCurrentStatus() {
+    return { status: global.dtCurrentStatus }
+  }
+
+  @Get('getDTCurrentExpertId')
+  getDTCurrentExpertId() {
+    return this.probService.getDTCurrentExpertId()
+  }
+
+  @Get('getDTCurrentLogLocType')
+  getDTCurrentLogLocType() {
+    return this.probService.getDTCurrentLogLocType()
+  }
+
+  @Get('getDTCurrentLogLocCode')
+  getDTCurrentLogLocCode() {
+    return this.probService.getDTCurrentLogLocCode()
+  }
 
   // @Get(':id')
   // findOne(@Param('id') id: string) {

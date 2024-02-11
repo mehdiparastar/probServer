@@ -9,11 +9,12 @@ import {
   WsTypeException,
   WsUnknownException,
 } from './ws-exceptions';
+import { Socket } from 'socket.io';
 
 @Catch()
 export class WsCatchAllFilter implements ExceptionFilter {
   catch(exception: Error, host: ArgumentsHost) {
-    const socket: SocketWithAuth = host.switchToWs().getClient();
+    const socket: Socket = host.switchToWs().getClient();
 
     if (exception instanceof BadRequestException) {
       const exceptionData = exception.getResponse();

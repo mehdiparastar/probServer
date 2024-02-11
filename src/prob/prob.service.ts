@@ -13,7 +13,7 @@ import { Quectel } from './entities/quectel.entity';
 import { User } from './entities/user.entity';
 import { WCDMAIdle } from './entities/wcdmaIdle.entity';
 import { WCDMALongCall } from './entities/wcdmaLongCall.entity';
-import { MSService } from './ms.service';
+import { MSService, allDMPorts } from './ms.service';
 import { GPSService } from './gps.service';
 import { GSMIdleService } from './idle.gsm.service';
 import { MSData } from './entities/ms-data.entity';
@@ -25,6 +25,8 @@ import { GSMLongCallService } from './longCall.gsm.service';
 import { WCDMALongCallService } from './longCall.wcdma.service';
 import * as fs from 'fs';
 import { callStatus } from './enum/callStatus.enum';
+import { ProbGateway, probSocketInItRoom } from './prob.gateway';
+import { dtCurrentStatusENUM } from './enum/dtcurrentStatus.enum';
 
 
 export const sleep = async (milisecond: number) => {
@@ -95,12 +97,19 @@ export class ProbService implements OnModuleInit {
     private alltechIdleService: ALLTECHIdleService,
     private gsmLongCallService: GSMLongCallService,
     private wcdmaLongCallService: WCDMALongCallService,
+    private readonly probSocketGateway: ProbGateway,
+
   ) {
   }
 
   async onModuleInit() {
 
 
+  }
+
+  async getProbSocket() {
+    const clients = this.probSocketGateway.io.adapter.rooms.get(probSocketInItRoom)
+    return ({ connected: true, connectedClientCount: clients ? clients.size : 0 })
   }
 
   private getRxLevColor(rxLev: number | string): string {
@@ -247,9 +256,11 @@ export class ProbService implements OnModuleInit {
   async initDT(type: logLocationType, code: string, expertId: number) {
 
     if (this.portsInitialized === false && this.portsInitializing === false && this.gpsInitializing === false) {
+
       const expert = await this.usersRepo.findOne({ where: { id: expertId } })
 
       if (expert) {
+
         const newEntry = this.inspectionsRepo.create({
           type: type,
           code: code,
@@ -257,21 +268,36 @@ export class ProbService implements OnModuleInit {
         })
         this.inspection = await this.inspectionsRepo.save(newEntry)
 
+        this.probSocketGateway.emitDTCurrentExpertId(this.inspection.expert.id)
+        this.probSocketGateway.emitDTCurrentLogLocType(this.inspection.type)
+        this.probSocketGateway.emitDTCurrentLogLocCode(this.inspection.code)
 
+        global.dtCurrentStatus = dtCurrentStatusENUM.initing
+        this.probSocketGateway.emitDTCurrentStatus(global.dtCurrentStatus)
         this.logger.error('------------------- start ms service -----------------------')
         this.portsInitializing = true
         await this.msService.portsInitializing(this.inspection)
         this.portsInitialized = true
         this.portsInitializing = false
         this.logger.error('------------------- end ms service -----------------------')
+        global.dtCurrentStatus = dtCurrentStatusENUM.inited
+        this.probSocketGateway.emitDTCurrentStatus(global.dtCurrentStatus)
 
+
+        global.dtCurrentStatus = dtCurrentStatusENUM.findingLoc
+        this.probSocketGateway.emitDTCurrentStatus(global.dtCurrentStatus)
         this.logger.error('------------------- start gps service -----------------------')
         this.gpsInitializing = true
         await this.gpsService.portsInitializing(this.inspection)
         this.gpsInitialized = true
         this.gpsInitializing = false
         this.logger.error('------------------- end gps service -----------------------')
+        global.dtCurrentStatus = dtCurrentStatusENUM.findedLoc
+        this.probSocketGateway.emitDTCurrentStatus(global.dtCurrentStatus)
 
+
+        global.dtCurrentStatus = dtCurrentStatusENUM.inited
+        this.probSocketGateway.emitDTCurrentStatus(global.dtCurrentStatus)
         return { msg: `DT inited successfully.` }
 
       }
@@ -289,6 +315,9 @@ export class ProbService implements OnModuleInit {
     if (this.inspection && this.portsInitialized && this.gpsInitialized && this.firstStartDT === false && this.tryTofirstStartDT === false) {
 
       this.tryTofirstStartDT = true
+
+      global.dtCurrentStatus = dtCurrentStatusENUM.starting
+      this.probSocketGateway.emitDTCurrentStatus(global.dtCurrentStatus)
 
       this.logger.error('------------------- start gsm idle service -----------------------')
       await this.gsmIdleService.portsInitializing(2, this.inspection)
@@ -318,16 +347,27 @@ export class ProbService implements OnModuleInit {
       this.firstStartDT = true
       this.startRecording()
 
+      global.dtCurrentStatus = dtCurrentStatusENUM.started
+      this.probSocketGateway.emitDTCurrentStatus(global.dtCurrentStatus)
+
       return { msg: `DT started successfully.` }
 
     }
     else {
-      return { msg: `please init first.` }
+      if (this.inspection && this.portsInitialized && this.gpsInitialized && this.firstStartDT === true && this.tryTofirstStartDT === true) {
+        return this.startRecording()
+      }
+      else {
+        return { msg: `please init first.` }
+      }
     }
   }
 
   async stop() {
     if (global.recording === true || (this.inspection !== null && this.inspection !== undefined)) {
+      global.dtCurrentStatus = dtCurrentStatusENUM.stopping
+      this.probSocketGateway.emitDTCurrentStatus(global.dtCurrentStatus)
+
       this.pauseRecording()
 
       await sleep(1000)
@@ -350,6 +390,11 @@ export class ProbService implements OnModuleInit {
 
       global.activeIntervals = []
 
+      for (const portInItStatus of global.portsInitingStatus) {
+        this.probSocketGateway.emitPortsInitingStatus(portInItStatus.port, 0)
+      }
+      global.portsInitingStatus = []
+
       this.inspection = null
       this.portsInitializing = false
       this.portsInitialized = false
@@ -357,6 +402,9 @@ export class ProbService implements OnModuleInit {
       this.gpsInitialized = false
       this.firstStartDT = false
       this.tryTofirstStartDT = false
+
+      global.dtCurrentStatus = dtCurrentStatusENUM.stopped
+      this.probSocketGateway.emitDTCurrentStatus(global.dtCurrentStatus)
 
       return { msg: 'DT stopped successfully.' }
     }
@@ -534,6 +582,10 @@ export class ProbService implements OnModuleInit {
   async startRecording() {
     if (this.firstStartDT === true && global.recording === false) {
       global.recording = true
+
+      global.dtCurrentStatus = dtCurrentStatusENUM.started
+      this.probSocketGateway.emitDTCurrentStatus(global.dtCurrentStatus)
+
       return { msg: 'recording started successfully.' }
     }
   }
@@ -541,7 +593,26 @@ export class ProbService implements OnModuleInit {
   async pauseRecording() {
     if (global.recording === true) {
       global.recording = false
+
+      global.dtCurrentStatus = dtCurrentStatusENUM.paused
+      this.probSocketGateway.emitDTCurrentStatus(global.dtCurrentStatus)
+
       return { msg: 'recording paused successfully.' }
     }
+  }
+
+  async getDTCurrentExpertId() {
+    const expertId = this.inspection && this.inspection.expert && this.inspection.expert.id
+    return ({ expertId })
+  }
+
+  async getDTCurrentLogLocType() {
+    const logLocType = this.inspection && this.inspection.type
+    return ({ logLocType })
+  }
+
+  async getDTCurrentLogLocCode() {
+    const logLocCode = this.inspection && this.inspection.code
+    return ({ logLocCode })
   }
 }

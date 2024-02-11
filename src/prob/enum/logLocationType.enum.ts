@@ -1,6 +1,6 @@
 export enum logLocationType {
-    road = 'road',
-    village = 'village',
-    city = 'city',
-    test = 'test'
+    road = 'Road',
+    village = 'Village',
+    city = 'City',
+    test = 'Test'
 }
