@@ -615,4 +615,16 @@ export class ProbService implements OnModuleInit {
     const logLocCode = this.inspection && this.inspection.code
     return ({ logLocCode })
   }
+
+  async getDTCurrentGSMLockIdle() {
+    // if (global.recording) {
+    // const gsmIdleData = await this.gpsDataRepo.find({ where: { inspection: { id: this.inspection.id } }, relations: { gsmIdleSamples: true } })
+    const gsmIdleData = await this.gpsDataRepo.find({ where: { inspection: { id: 128 } }, relations: { gsmIdleSamples: true } })
+    return gsmIdleData
+
+    // }
+    // else {
+    //   return ([])
+    // }
+  }
 }

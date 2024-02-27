@@ -1,10 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Res } from '@nestjs/common';
 import { ProbService } from './prob.service';
 import { CreateProbDto } from './dto/create-prob.dto';
 import { UpdateProbDto } from './dto/update-prob.dto';
 import { ATCommandDto } from './dto/AT-command.dto'
 import { StartLogDto } from './dto/start-log.dto';
 import { dtCurrentStatusENUM } from './enum/dtcurrentStatus.enum';
+import { Response } from 'express';
+
 
 @Controller('prob')
 export class ProbController {
@@ -13,7 +15,7 @@ export class ProbController {
   ) { }
 
   @Get('prob-socket')
-  getProbSocket(){
+  getProbSocket() {
     return this.probService.getProbSocket()
   }
 
@@ -72,6 +74,12 @@ export class ProbController {
   getDTCurrentLogLocCode() {
     return this.probService.getDTCurrentLogLocCode()
   }
+
+  @Get('getDTCurrentGSMLockIdle')
+  getDTCurrentGSMLockIdle() {
+    return this.probService.getDTCurrentGSMLockIdle()
+  }
+
 
   // @Get(':id')
   // findOne(@Param('id') id: string) {

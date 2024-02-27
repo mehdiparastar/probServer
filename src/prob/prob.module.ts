@@ -54,7 +54,7 @@ import { ProbGateway } from './prob.gateway';
     ALLTECHIdleService,
     GSMLongCallService,
     WCDMALongCallService,
-    ProbGateway
+    ProbGateway,
   ],
 })
 export class ProbModule { }
