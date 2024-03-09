@@ -319,30 +319,38 @@ export class ProbService implements OnModuleInit {
       global.dtCurrentStatus = dtCurrentStatusENUM.starting
       this.probSocketGateway.emitDTCurrentStatus(global.dtCurrentStatus)
 
-      this.logger.error('------------------- start gsm idle service -----------------------')
-      await this.gsmIdleService.portsInitializing(2, this.inspection)
-      this.logger.error('------------------- end gsm idle service -----------------------')
+      // this.logger.error('------------------- start gsm idle service -----------------------')
+      // await this.gsmIdleService.portsInitializing(2, this.inspection)
+      // this.logger.error('------------------- end gsm idle service -----------------------')
 
-      this.logger.error('------------------- start wcdma idle service -----------------------')
-      await this.wcdmaIdleService.portsInitializing(6, this.inspection)
-      this.logger.error('------------------- end wcdma idle service -----------------------')
+      // this.logger.error('------------------- start wcdma idle service -----------------------')
+      // await this.wcdmaIdleService.portsInitializing(6, this.inspection)
+      // this.logger.error('------------------- end wcdma idle service -----------------------')
 
-      this.logger.error('------------------- start lte idle service -----------------------')
-      await this.lteIdleService.portsInitializing(10, this.inspection)
-      this.logger.error('------------------- end lte idle service -----------------------')
+      // this.logger.error('------------------- start lte idle service -----------------------')
+      // await this.lteIdleService.portsInitializing(10, this.inspection)
+      // this.logger.error('------------------- end lte idle service -----------------------')
 
-      this.logger.error('------------------- start alltech idle service -----------------------')
-      await this.alltechIdleService.portsInitializing(14, this.inspection)
-      this.logger.error('------------------- end alltech idle service -----------------------')
+      // this.logger.error('------------------- start alltech idle service -----------------------')
+      // await this.alltechIdleService.portsInitializing(14, this.inspection)
+      // this.logger.error('------------------- end alltech idle service -----------------------')
 
-      this.logger.error('------------------- start gsm LongCall service -----------------------')
-      await this.gsmLongCallService.portsInitializing(18, this.inspection)
-      this.logger.error('------------------- end gsm LongCall service -----------------------')
+      // this.logger.error('------------------- start gsm LongCall service -----------------------')
+      // await this.gsmLongCallService.portsInitializing(18, this.inspection)
+      // this.logger.error('------------------- end gsm LongCall service -----------------------')
 
-      this.logger.error('------------------- start wcdma LongCall service -----------------------')
-      await this.wcdmaLongCallService.portsInitializing(22, this.inspection)
-      this.logger.error('------------------- end wcdma LongCall service -----------------------')
+      // this.logger.error('------------------- start wcdma LongCall service -----------------------')
+      // await this.wcdmaLongCallService.portsInitializing(22, this.inspection)
+      // this.logger.error('------------------- end wcdma LongCall service -----------------------')
 
+
+      await Promise.all([
+        this.gsmIdleService.portsInitializing(2, this.inspection),
+        this.wcdmaIdleService.portsInitializing(6, this.inspection),
+        this.lteIdleService.portsInitializing(10, this.inspection),
+        this.gsmLongCallService.portsInitializing(18, this.inspection),
+        this.wcdmaLongCallService.portsInitializing(22, this.inspection),
+      ])
 
       this.firstStartDT = true
       this.startRecording()
@@ -350,7 +358,7 @@ export class ProbService implements OnModuleInit {
       global.dtCurrentStatus = dtCurrentStatusENUM.started
       this.probSocketGateway.emitDTCurrentStatus(global.dtCurrentStatus)
 
-      return { msg: `DT started successfully.` }
+      return { msg: `DT started successfully. ` }
 
     }
     else {
@@ -365,10 +373,11 @@ export class ProbService implements OnModuleInit {
 
   async stop() {
     if (global.recording === true || (this.inspection !== null && this.inspection !== undefined)) {
-      global.dtCurrentStatus = dtCurrentStatusENUM.stopping
-      this.probSocketGateway.emitDTCurrentStatus(global.dtCurrentStatus)
 
       this.pauseRecording()
+
+      global.dtCurrentStatus = dtCurrentStatusENUM.stopping
+      this.probSocketGateway.emitDTCurrentStatus(global.dtCurrentStatus)
 
       await sleep(1000)
 
@@ -617,14 +626,14 @@ export class ProbService implements OnModuleInit {
   }
 
   async getDTCurrentGSMLockIdle() {
-    // if (global.recording) {
-    // const gsmIdleData = await this.gpsDataRepo.find({ where: { inspection: { id: this.inspection.id } }, relations: { gsmIdleSamples: true } })
-    const gsmIdleData = await this.gpsDataRepo.find({ where: { inspection: { id: 128 } }, relations: { gsmIdleSamples: true } })
-    return gsmIdleData
+    if (this.portsInitialized && this.gpsInitialized && this.inspection) {
+      const gsmIdleData = await this.gpsDataRepo.find({ where: { inspection: { id: this.inspection.id } }, relations: { gsmIdleSamples: true } })
+      // const gsmIdleData = await this.gpsDataRepo.find({ where: { inspection: { id: 1 } }, relations: { gsmIdleSamples: true } })
+      return gsmIdleData
 
-    // }
-    // else {
-    //   return ([])
-    // }
+    }
+    else {
+      return ([])
+    }
   }
 }

@@ -18,6 +18,7 @@ import { WsCatchAllFilter } from 'src/exceptions/ws-catch-all-filter';
 import { ProbService } from './prob.service';
 import { dtCurrentStatusENUM } from './enum/dtcurrentStatus.enum';
 import { logLocationType } from './enum/logLocationType.enum';
+import { GPSData } from './entities/gps-data.entity';
 
 
 export const probSocketInItRoom = "probSocketInItRoom"
@@ -93,6 +94,10 @@ export class ProbGateway
 
   emitDTCurrentLogLocCode(logLocCode: string) {
     this.io.to(probSocketInItRoom).emit('dtCurrentLogLocCode', { logLocCode })
+  }
+
+  emitDTGSMIdle(gsmIdleData: GPSData) {
+    this.io.to(probSocketInItRoom).emit('dtCurrentGSMLockIdle', gsmIdleData)
   }
 }
 

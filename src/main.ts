@@ -6,7 +6,9 @@ import { join } from 'path';
 import { ApplicationSocketIOAdapter } from './socket-io-adaptor';
 import { dtCurrentStatusENUM } from './prob/enum/dtcurrentStatus.enum';
 
+
 async function bootstrap() {
+
   global.recording = false
   global.activeIntervals = []
   global.portsInitingStatus = []
@@ -24,7 +26,7 @@ async function bootstrap() {
   app.use(express.static(join(__dirname, '..', '..', 'prob_front', 'build')));
 
   await app.listen(serverPort, async () => {
-    console.log(`Application is running on: ${await app.getUrl()}`);
+    console.log(`Application is running on: ${await app.getUrl()}`, process.env.NODE_ENV);
   });
 }
 bootstrap();

@@ -30,7 +30,7 @@ export const allDMPorts = [2, 6, 10, 14, 18, 22, 26, 30]
 @Injectable()
 export class MSService {
     private readonly logger = new Logger(MSService.name);
-    private initializedPorts: { [key: string]: SerialPort } = {}
+    public initializedPorts: { [key: string]: SerialPort } = {}
     private dmPorts = allDMPorts
     private noCoverageCheck: { [key: string]: boolean } = {}
     private moduleInfo: { [key: string]: { modelName: string, revision: string } } = {}
@@ -64,32 +64,57 @@ export class MSService {
         this.dmPortIntervalId = {}
 
         for (const dmPort of this.dmPorts) {
-            this.initializedPorts[`ttyUSB${dmPort}`].close()
-            this.logger.debug(`port ${dmPort} terminate successfully.`)
+            if (this.initializedPorts[`ttyUSB${dmPort}`].isOpen && this.initializedPorts[`ttyUSB${dmPort}`].isOpen === true) {
+                this.initializedPorts[`ttyUSB${dmPort}`].close()
+                this.logger.debug(`port ${dmPort} terminate successfully.`)
+            }
         }
         this.initializedPorts = {}
     }
 
     async portsInitializing(inspection: Inspection) {
-        for (const dmPort of this.dmPorts) {
-            this.dmPortIntervalId[`ttyUSB${dmPort}`] = setInterval(
-                async () => {
-                    const progress = this.checkPortTrueInit(dmPort)
+        // for (const dmPort of this.dmPorts) {
+        //     this.dmPortIntervalId[`ttyUSB${dmPort}`] = setInterval(
+        //         async () => {
+        //             const progress = this.checkPortTrueInit(dmPort)
 
-                    if (progress === 100) {
-                        clearInterval(this.dmPortIntervalId[`ttyUSB${dmPort}`])
-                        this.initializedPorts[`ttyUSB${dmPort}`].close()
-                        this.logger.debug(`port ${dmPort} initialized successfully then port closed.`)
-                    }
-                    else {
-                        this.logger.log(`try to initialize port ${dmPort}`)
-                        this.getMSData(dmPort)
-                    }
-                },
-                2000)
-            global.activeIntervals.push(this.dmPortIntervalId[`ttyUSB${dmPort}`])
-            await this.waitForNextPortInit(dmPort)
-        }
+        //             if (progress === 100) {
+        //                 clearInterval(this.dmPortIntervalId[`ttyUSB${dmPort}`])
+        //                 this.initializedPorts[`ttyUSB${dmPort}`].close()
+        //                 this.logger.debug(`port ${dmPort} initialized successfully then port closed.`)
+        //             }
+        //             else {
+        //                 this.logger.log(`try to initialize port ${dmPort}`)
+        //                 this.getMSData(dmPort)
+        //             }
+        //         },
+        //         2000)
+        //     global.activeIntervals.push(this.dmPortIntervalId[`ttyUSB${dmPort}`])
+        //     await this.waitForNextPortInit(dmPort)
+        // }
+        await Promise.all(
+            this.dmPorts.map((dmPort, index) => {
+                this.dmPortIntervalId[`ttyUSB${dmPort}`] = setInterval(
+                    async () => {
+                        const progress = this.checkPortTrueInit(dmPort)
+
+                        if (progress === 100) {
+                            clearInterval(this.dmPortIntervalId[`ttyUSB${dmPort}`])
+                            if (this.initializedPorts[`ttyUSB${dmPort}`].isOpen === true)
+                                this.initializedPorts[`ttyUSB${dmPort}`].close()
+                            this.logger.debug(`port ${dmPort} initialized successfully then port closed.`)
+                        }
+                        else {
+                            this.logger.log(`try to initialize port ${dmPort}`)
+                            this.getMSData(dmPort)
+                        }
+                    },
+                    2000)
+                global.activeIntervals.push(this.dmPortIntervalId[`ttyUSB${dmPort}`])
+                return this.waitForNextPortInit(dmPort)
+            })
+        )
+
         await sleep(5000)
 
         const res = []

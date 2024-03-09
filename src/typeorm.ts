@@ -42,7 +42,7 @@ const config: TypeOrmModuleOptions = {
     FTPDL,
     FTPUL,
     MSData
-  ],  
+  ],
 };
 
 export default registerAs('typeorm', () => config)

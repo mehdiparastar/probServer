@@ -8,6 +8,7 @@ import { MSData } from "./entities/ms-data.entity";
 import { scenarioName } from "./enum/scenarioName.enum";
 import { Inspection } from "./entities/inspection.entity";
 import { sleep } from "./prob.service";
+import { MSService } from "./ms.service";
 
 
 function convertDMStoDD(degrees: string, direction: string) {
@@ -29,6 +30,7 @@ export class GPSService {
     private disabledGPSPorts: number[] = []
     private gpsPort: number
     private initializingEnd: boolean = false
+    private msService: MSService
 
     constructor(
         @InjectRepository(GPSData) private gpsDataRepo: Repository<GPSData>,
@@ -58,10 +60,16 @@ export class GPSService {
 
     async portsTermination() {
 
+        // this.msService.initializedPorts[`ttyUSB${primaryDMPorts[primaryNMEAPorts.indexOf(this.selectedGPSPort)]}`]
+
         for (const portNumber of ([...primaryDMPorts, ...primaryNMEAPorts])) {
-            this.initializedPorts[`ttyUSB${portNumber}`].close()
-            this.logger.debug(`port ${portNumber} terminate successfully.`)
+            if (this.initializedPorts[`ttyUSB${portNumber}`] && this.initializedPorts[`ttyUSB${portNumber}`].isOpen === true) {
+                this.initializedPorts[`ttyUSB${portNumber}`].close()
+                this.logger.debug(`port ${portNumber} terminate successfully.`)
+            }
         }
+
+        await sleep(2000)
 
         const port = new SerialPort({ path: `/dev/ttyUSB${primaryDMPorts[primaryNMEAPorts.indexOf(this.selectedGPSPort)]}`, baudRate: 115200 });
 
@@ -77,12 +85,31 @@ export class GPSService {
 
             if (response.indexOf('OK') > 0) {
                 this.logger.warn('disabled')
-                port.close()
+                if (port.isOpen === true)
+                    port.close()
             }
         })
 
+        port.on('error', (err) => {
+            this.logger.error(`Error on port ${primaryDMPorts[primaryNMEAPorts.indexOf(this.selectedGPSPort)]}: ${err.message}`);
+        });
 
-        await sleep(2000)
+
+        await sleep(4000)
+
+        await new Promise((resolve) => {
+            const checkCondition = () => {
+                const cond = port.isOpen === false
+
+                if (cond) {
+                    resolve(1);
+                } else {
+                    setTimeout(checkCondition, 500); // Adjust the interval as needed
+                }
+            };
+
+            checkCondition();
+        });
 
         this.selectedGPSPort = undefined
         this.disabledGPSPorts = []
@@ -95,7 +122,7 @@ export class GPSService {
 
         for (const portNumber of ([...this.dmPorts, ...this.nmeaPorts])) {
             if (this.initializedPorts[`ttyUSB${portNumber}`]) {
-                if (!this.initializedPorts[`ttyUSB${portNumber}`].isOpen) {
+                if (this.initializedPorts[`ttyUSB${portNumber}`] && this.initializedPorts[`ttyUSB${portNumber}`].isOpen === false) {
                     this.initializedPorts[`ttyUSB${portNumber}`].open()
                     this.logger.warn(`port ${portNumber} reOpened.`)
                 }
@@ -128,8 +155,11 @@ export class GPSService {
 
                     if (response.indexOf('+QGPS: 0') >= 0) {
                         if (this.disabledGPSPorts.includes(portNumber)) {
-                            this.initializedPorts[`ttyUSB${portNumber}`].close()
-                            this.initializedPorts[`ttyUSB${this.nmeaPorts[this.dmPorts.indexOf(portNumber)]}`].close()
+                            if (this.initializedPorts[`ttyUSB${portNumber}`].isOpen === true)
+                                this.initializedPorts[`ttyUSB${portNumber}`].close()
+
+                            if (this.initializedPorts[`ttyUSB${this.nmeaPorts[this.dmPorts.indexOf(portNumber)]}`].isOpen === true)
+                                this.initializedPorts[`ttyUSB${this.nmeaPorts[this.dmPorts.indexOf(portNumber)]}`].close()
                         }
                         else {
                             this.disabledGPSPorts.push(portNumber)
@@ -153,7 +183,8 @@ export class GPSService {
                             }
                             else {
                                 if (Object.values(this.initializedPorts).filter(item => item.isOpen).length === 2) {
-                                    this.initializedPorts[`ttyUSB${this.dmPorts[this.nmeaPorts.indexOf(this.selectedGPSPort)]}`].close()
+                                    if (this.initializedPorts[`ttyUSB${this.dmPorts[this.nmeaPorts.indexOf(this.selectedGPSPort)]}`].isOpen === true)
+                                        this.initializedPorts[`ttyUSB${this.dmPorts[this.nmeaPorts.indexOf(this.selectedGPSPort)]}`].close()
                                 }
                                 else if (Object.values(this.initializedPorts).filter(item => item.isOpen).length === 1) {
 
@@ -174,6 +205,18 @@ export class GPSService {
                                                         skipUpdateIfNoValuesChanged: true
                                                     }
                                                 )
+
+                                                // const record = this.gpsDataRepo.create({
+                                                //     gpsTime: gpsTime,
+                                                //     latitude: ggaData.latitude || rmcData.latitude,
+                                                //     longitude: ggaData.longitude || rmcData.longitude,
+                                                //     altitude: ggaData.altitude,
+                                                //     groundSpeed: rmcData.groundSpeed,
+                                                //     inspection: inspection
+                                                // })
+
+                                                // const gpsData = await this.gpsDataRepo.save(record)                                                
+
                                             }
                                         }
                                         catch (ex) {
@@ -236,7 +279,6 @@ export class GPSService {
         await this.waitForEndOfInitializing()
 
     }
-
 
     waitForEndOfInitializing = (timeout = 1000) => {
         return new Promise((resolve) => {

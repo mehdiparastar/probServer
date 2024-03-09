@@ -17,14 +17,7 @@ declare global {
 
     interface IconfigService {
         CLIENT_PORT?: number;
-        SERVER_PORT?: number;
-        JWT_ACCESS_SECRET?: string;
-        JWT_REFRESH_SECRET?: string;
-        JWT_ACCESS_EXPIRATION_TIME?: string | number;
-        JWT_REFRESH_EXPIRATION_TIME?: string | number;
-        OAUTH_GOOGLE_ID?: string;
-        OAUTH_GOOGLE_SECRET?: string;
-        OAUTH_GOOGLE_REDIRECT_URL?: string;
+        SERVER_PORT?: number;        
 
         MYSQL_USERNAME?: string
         MYSQL_PASSWORD?: string
