@@ -1,16 +1,20 @@
 import { Column, CreateDateColumn, Entity, Index, ManyToOne, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { logLocationType } from "../enum/logLocationType.enum";
 import { User } from "./user.entity";
-import { GSMIdle } from "./gsmIdle.entity";
-import { WCDMAIdle } from "./wcdmaIdle.entity";
-import { LTEIdle } from "./lteIdle.entity";
-import { GSMLongCall } from "./gsmLongCall.entity";
-import { WCDMALongCall } from "./wcdmaLongCall.entity";
+import { GSMIdleMCI } from "./gsmIdleMCI.entity";
+import { WCDMAIdleMCI } from "./wcdmaIdleMCI.entity";
+import { LTEIdleMCI } from "./lteIdleMCI.entity";
+import { GSMLongCallMCI } from "./gsmLongCallMCI.entity";
+import { WCDMALongCallMCI } from "./wcdmaLongCallMCI.entity";
 import { FTPDL } from "./ftpDL.entity";
 import { FTPUL } from "./ftpUL.entity";
-import { ALLTECHIdle } from "./alltechIdle.entity";
 import { MSData } from "./ms-data.entity";
 import { GPSData } from "./gps-data.entity";
+import { GSMIdleMTN } from "./gsmIdleMTN.entity";
+import { WCDMAIdleMTN } from "./wcdmaIdleMTN.entity";
+import { LTEIdleMTN } from "./lteIdleMTN.entity";
+import { GSMLongCallMTN } from "./gsmLongCallMTN.entity ";
+import { WCDMALongCallMTN } from "./wcdmaLongCallMTN.entity";
 
 @Entity()
 export class Inspection {
@@ -25,25 +29,37 @@ export class Inspection {
 
     @ManyToOne(() => User, (user) => user.inspections, { nullable: false })
     expert: User;
+////////////////////////////////////////////////////////////////////////////////////////////////////
+    @OneToMany(() => GSMIdleMCI, (gsmIdle) => gsmIdle.inspection, { cascade: true })
+    gsmIdlesMCI: GSMIdleMCI[];
 
-    @OneToMany(() => GSMIdle, (gsmIdle) => gsmIdle.inspection, { cascade: true })
-    gsmIdles: GSMIdle[];
+    @OneToMany(() => WCDMAIdleMCI, (wcdmaIdle) => wcdmaIdle.inspection, { cascade: true })
+    wcdmaIdlesMCI: WCDMAIdleMCI[];
 
-    @OneToMany(() => WCDMAIdle, (wcdmaIdle) => wcdmaIdle.inspection, { cascade: true })
-    wcdmaIdles: WCDMAIdle[];
+    @OneToMany(() => LTEIdleMCI, (lteIdle) => lteIdle.inspection, { cascade: true })
+    lteIdlesMCI: LTEIdleMCI[];
 
-    @OneToMany(() => LTEIdle, (lteIdle) => lteIdle.inspection, { cascade: true })
-    lteIdles: LTEIdle[];
+    @OneToMany(() => GSMLongCallMCI, (gsmLongCall) => gsmLongCall.inspection, { cascade: true })
+    gsmLongCallsMCI: GSMLongCallMCI[];
 
-    @OneToMany(() => ALLTECHIdle, (alltechIdle) => alltechIdle.inspection, { cascade: true })
-    alltechIdles: ALLTECHIdle[];
+    @OneToMany(() => WCDMALongCallMCI, (wcdmaLongCall) => wcdmaLongCall.inspection, { cascade: true })
+    wcdmaLongCallsMCI: WCDMALongCallMCI[];
+////////////////////////////////////////////////////////////////////////////////////////////////////
+    @OneToMany(() => GSMIdleMTN, (gsmIdle) => gsmIdle.inspection, { cascade: true })
+    gsmIdlesMTN: GSMIdleMTN[];
 
-    @OneToMany(() => GSMLongCall, (gsmLongCall) => gsmLongCall.inspection, { cascade: true })
-    gsmLongCalls: GSMLongCall[];
+    @OneToMany(() => WCDMAIdleMTN, (wcdmaIdle) => wcdmaIdle.inspection, { cascade: true })
+    wcdmaIdlesMTN: WCDMAIdleMTN[];
 
-    @OneToMany(() => WCDMALongCall, (wcdmaLongCall) => wcdmaLongCall.inspection, { cascade: true })
-    wcdmaLongCalls: WCDMALongCall[];
+    @OneToMany(() => LTEIdleMTN, (lteIdle) => lteIdle.inspection, { cascade: true })
+    lteIdlesMTN: LTEIdleMTN[];
 
+    @OneToMany(() => GSMLongCallMTN, (gsmLongCall) => gsmLongCall.inspection, { cascade: true })
+    gsmLongCallsMTN: GSMLongCallMTN[];
+
+    @OneToMany(() => WCDMALongCallMTN, (wcdmaLongCall) => wcdmaLongCall.inspection, { cascade: true })
+    wcdmaLongCallsMTN: WCDMALongCallMTN[];
+/////////////////////////////////////////////////////////////////////////////////////////////////////
     @OneToMany(() => FTPDL, (ftpDL) => ftpDL.inspection, { cascade: true })
     ftpDLs: FTPDL[];
 

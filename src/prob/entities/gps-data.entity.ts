@@ -1,13 +1,17 @@
 import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
-import { GSMIdle } from "./gsmIdle.entity";
-import { WCDMAIdle } from "./wcdmaIdle.entity";
-import { LTEIdle } from "./lteIdle.entity";
-import { GSMLongCall } from "./gsmLongCall.entity";
-import { WCDMALongCall } from "./wcdmaLongCall.entity";
+import { GSMIdleMCI } from "./gsmIdleMCI.entity";
+import { WCDMAIdleMCI } from "./wcdmaIdleMCI.entity";
+import { LTEIdleMCI } from "./lteIdleMCI.entity";
+import { GSMLongCallMCI } from "./gsmLongCallMCI.entity";
+import { WCDMALongCallMCI } from "./wcdmaLongCallMCI.entity";
 import { FTPDL } from "./ftpDL.entity";
 import { FTPUL } from "./ftpUL.entity";
-import { ALLTECHIdle } from "./alltechIdle.entity";
 import { Inspection } from "./inspection.entity";
+import { GSMIdleMTN } from "./gsmIdleMTN.entity";
+import { WCDMAIdleMTN } from "./wcdmaIdleMTN.entity";
+import { LTEIdleMTN } from "./lteIdleMTN.entity";
+import { GSMLongCallMTN } from "./gsmLongCallMTN.entity ";
+import { WCDMALongCallMTN } from "./wcdmaLongCallMTN.entity";
 
 @Entity()
 export class GPSData {
@@ -28,25 +32,37 @@ export class GPSData {
 
     @Column({ nullable: true })
     groundSpeed: string;
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    @OneToMany(() => GSMIdleMCI, (gsmIdle) => gsmIdle.location, { cascade: true, nullable: true })
+    gsmIdleSamplesMCI: GSMIdleMCI[];
 
-    @OneToMany(() => GSMIdle, (gsmIdle) => gsmIdle.location, { cascade: true, nullable: true })
-    gsmIdleSamples: GSMIdle[];
+    @OneToMany(() => WCDMAIdleMCI, (wcdmaIdle) => wcdmaIdle.location, { cascade: true, nullable: true }) // specify inverse side as a second parameter
+    wcdmaIdleSamplesMCI: WCDMAIdleMCI[]
 
-    @OneToMany(() => WCDMAIdle, (wcdmaIdle) => wcdmaIdle.location, { cascade: true, nullable: true }) // specify inverse side as a second parameter
-    wcdmaIdleSamples: WCDMAIdle[]
+    @OneToMany(() => LTEIdleMCI, (lteIdle) => lteIdle.location, { cascade: true, nullable: true }) // specify inverse side as a second parameter
+    lteIdleSamplesMCI: LTEIdleMCI[]
 
-    @OneToMany(() => LTEIdle, (lteIdle) => lteIdle.location, { cascade: true, nullable: true }) // specify inverse side as a second parameter
-    lteIdleSamples: LTEIdle[]
+    @OneToMany(() => GSMLongCallMCI, (gsmLongCall) => gsmLongCall.location, { cascade: true, nullable: true })
+    gsmLongCallSamplesMCI: GSMLongCallMCI[];
 
-    @OneToMany(() => ALLTECHIdle, (alltechIdle) => alltechIdle.location, { cascade: true, nullable: true }) // specify inverse side as a second parameter
-    alltechIdleSamples: ALLTECHIdle[]
+    @OneToMany(() => WCDMALongCallMCI, (wcdmaLongCall) => wcdmaLongCall.location, { cascade: true, nullable: true }) // specify inverse side as a second parameter
+    wcdmaLongCallSamplesMCI: WCDMALongCallMCI[]
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    @OneToMany(() => GSMIdleMTN, (gsmIdle) => gsmIdle.location, { cascade: true, nullable: true })
+    gsmIdleSamplesMTN: GSMIdleMTN[];
 
-    @OneToMany(() => GSMLongCall, (gsmLongCall) => gsmLongCall.location, { cascade: true, nullable: true })
-    gsmLongCallSamples: GSMLongCall[];
+    @OneToMany(() => WCDMAIdleMTN, (wcdmaIdle) => wcdmaIdle.location, { cascade: true, nullable: true }) // specify inverse side as a second parameter
+    wcdmaIdleSamplesMTN: WCDMAIdleMTN[]
 
-    @OneToMany(() => WCDMALongCall, (wcdmaLongCall) => wcdmaLongCall.location, { cascade: true, nullable: true }) // specify inverse side as a second parameter
-    wcdmaLongCallSamples: WCDMALongCall[]
+    @OneToMany(() => LTEIdleMTN, (lteIdle) => lteIdle.location, { cascade: true, nullable: true }) // specify inverse side as a second parameter
+    lteIdleSamplesMTN: LTEIdleMTN[]
 
+    @OneToMany(() => GSMLongCallMTN, (gsmLongCall) => gsmLongCall.location, { cascade: true, nullable: true })
+    gsmLongCallSamplesMTN: GSMLongCallMTN[];
+
+    @OneToMany(() => WCDMALongCallMTN, (wcdmaLongCall) => wcdmaLongCall.location, { cascade: true, nullable: true }) // specify inverse side as a second parameter
+    wcdmaLongCallSamplesMTN: WCDMALongCallMTN[]
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     @OneToMany(() => FTPDL, (ftpdl) => ftpdl.location, { cascade: true, nullable: true }) // specify inverse side as a second parameter
     ftpDLSamples: FTPDL[]
 

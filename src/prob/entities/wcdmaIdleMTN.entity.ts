@@ -1,17 +1,14 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
-import { Inspection } from "./inspection.entity";
+import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 import { GPSData } from "./gps-data.entity";
+import { Inspection } from "./inspection.entity";
 
 @Entity()
-export class LTEIdle {
+export class WCDMAIdleMTN {
     @PrimaryGeneratedColumn()
     id: number;
 
     @Column({ nullable: true })
     tech: string
-
-    @Column({ nullable: true })
-    is_tdd: string
 
     @Column({ nullable: true })
     mcc: string
@@ -20,45 +17,45 @@ export class LTEIdle {
     mnc: string
 
     @Column({ nullable: true })
+    lac: string
+
+    @Column({ nullable: true })
     cellid: string
 
     @Column({ nullable: true })
-    pcid: string
+    uarfcn: string
 
     @Column({ nullable: true })
-    earfcn: string
+    psc: string
 
     @Column({ nullable: true })
-    freq_band_ind: string
+    rac: string
 
     @Column({ nullable: true })
-    ul_bandwidth: string
+    rscp: string
 
     @Column({ nullable: true })
-    dl_bandwidth: string
+    ecio: string
 
     @Column({ nullable: true })
-    tac: string
+    phych: string
 
     @Column({ nullable: true })
-    rsrp: string
+    sf: string
 
     @Column({ nullable: true })
-    rsrq: string
+    slot: string
 
     @Column({ nullable: true })
-    rssi: string
+    speech_code: string
 
     @Column({ nullable: true })
-    sinr: string
+    comMod: string
 
-    @Column({ nullable: true })
-    srxlev: string
-
-    @ManyToOne(() => Inspection, (inspection) => inspection.lteIdles, { nullable: false })
+    @ManyToOne(() => Inspection, (inspection) => inspection.wcdmaIdlesMCI, { nullable: false })
     inspection: Inspection;
 
-    @ManyToOne(() => GPSData, (location) => location.lteIdleSamples, { nullable: true })
+    @ManyToOne(() => GPSData, (location) => location.wcdmaIdleSamplesMCI, { nullable: true })
     location: GPSData
 
     @CreateDateColumn()

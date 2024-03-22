@@ -1,18 +1,17 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ALLTECHIdle } from './entities/alltechIdle.entity';
 import { FTPDL } from './entities/ftpDL.entity';
 import { FTPUL } from './entities/ftpUL.entity';
 import { GPSData } from './entities/gps-data.entity';
-import { GSMIdle } from './entities/gsmIdle.entity';
-import { GSMLongCall } from './entities/gsmLongCall.entity';
+import { GSMIdleMCI } from './entities/gsmIdleMCI.entity';
+import { GSMLongCallMCI } from './entities/gsmLongCallMCI.entity';
 import { Inspection } from './entities/inspection.entity';
-import { LTEIdle } from './entities/lteIdle.entity';
+import { LTEIdleMCI } from './entities/lteIdleMCI.entity';
 import { Quectel } from './entities/quectel.entity';
 import { User } from './entities/user.entity';
-import { WCDMAIdle } from './entities/wcdmaIdle.entity';
-import { WCDMALongCall } from './entities/wcdmaLongCall.entity';
+import { WCDMAIdleMCI } from './entities/wcdmaIdleMCI.entity';
+import { WCDMALongCallMCI } from './entities/wcdmaLongCallMCI.entity';
 import { MSService, allDMPorts } from './ms.service';
 import { GPSService } from './gps.service';
 import { GSMIdleService } from './idle.gsm.service';
@@ -20,13 +19,18 @@ import { MSData } from './entities/ms-data.entity';
 import { logLocationType } from './enum/logLocationType.enum';
 import { WCDMAIdleService } from './idle.wcdma.service';
 import { LTEIdleService } from './idle.lte.service';
-import { ALLTECHIdleService } from './idle.allTech.service';
 import { GSMLongCallService } from './longCall.gsm.service';
 import { WCDMALongCallService } from './longCall.wcdma.service';
 import * as fs from 'fs';
 import { callStatus } from './enum/callStatus.enum';
 import { ProbGateway, probSocketInItRoom } from './prob.gateway';
 import { dtCurrentStatusENUM } from './enum/dtcurrentStatus.enum';
+import { scenarioName } from './enum/scenarioName.enum';
+import { WCDMALongCallMTN } from './entities/wcdmaLongCallMTN.entity';
+import { LTEIdleMTN } from './entities/lteIdleMTN.entity';
+import { GSMIdleMTN } from './entities/gsmIdleMTN.entity';
+import { GSMLongCallMTN } from './entities/gsmLongCallMTN.entity ';
+import { WCDMAIdleMTN } from './entities/wcdmaIdleMTN.entity';
 
 
 export const sleep = async (milisecond: number) => {
@@ -80,24 +84,44 @@ export class ProbService implements OnModuleInit {
     @InjectRepository(Quectel) private quectelsRepo: Repository<Quectel>,
     @InjectRepository(GPSData) private gpsDataRepo: Repository<GPSData>,
     @InjectRepository(Inspection) private inspectionsRepo: Repository<Inspection>,
-    @InjectRepository(GSMIdle) private gsmIdlesRepo: Repository<GSMIdle>,
-    @InjectRepository(WCDMAIdle) private wcdmaIdlesRepo: Repository<WCDMAIdle>,
-    @InjectRepository(LTEIdle) private lteIdlesRepo: Repository<LTEIdle>,
-    @InjectRepository(ALLTECHIdle) private allTechIdlesRepo: Repository<ALLTECHIdle>,
-    @InjectRepository(GSMLongCall) private gsmLongCallRepo: Repository<GSMLongCall>,
-    @InjectRepository(WCDMALongCall) private wcdmaLongCallRepo: Repository<WCDMALongCall>,
+    @InjectRepository(GSMIdleMCI) private gsmIdlesMCIRepo: Repository<GSMIdleMCI>,
+    @InjectRepository(WCDMAIdleMCI) private wcdmaIdlesMCIRepo: Repository<WCDMAIdleMCI>,
+    @InjectRepository(LTEIdleMCI) private lteIdlesMCIRepo: Repository<LTEIdleMCI>,
+    @InjectRepository(GSMLongCallMCI) private gsmLongCallMCIRepo: Repository<GSMLongCallMCI>,
+    @InjectRepository(WCDMALongCallMCI) private wcdmaLongCallMCIRepo: Repository<WCDMALongCallMCI>,
+    @InjectRepository(GSMIdleMTN) private gsmIdlesMTNRepo: Repository<GSMIdleMTN>,
+    @InjectRepository(WCDMAIdleMTN) private wcdmaIdlesMTNRepo: Repository<WCDMAIdleMTN>,
+    @InjectRepository(LTEIdleMTN) private lteIdlesMTNRepo: Repository<LTEIdleMTN>,
+    @InjectRepository(GSMLongCallMTN) private gsmLongCallMTNRepo: Repository<GSMLongCallMTN>,
+    @InjectRepository(WCDMALongCallMTN) private wcdmaLongCallMTNRepo: Repository<WCDMALongCallMTN>,
     @InjectRepository(FTPDL) private ftpDLRepo: Repository<FTPDL>,
     @InjectRepository(FTPUL) private ftpULRepo: Repository<FTPUL>,
     @InjectRepository(MSData) private msDataRepo: Repository<MSData>,
-    private msService: MSService,
+    // private msService: MSService,
     private gpsService: GPSService,
-    private gsmIdleService: GSMIdleService,
-    private wcdmaIdleService: WCDMAIdleService,
-    private lteIdleService: LTEIdleService,
-    private alltechIdleService: ALLTECHIdleService,
-    private gsmLongCallService: GSMLongCallService,
-    private wcdmaLongCallService: WCDMALongCallService,
     private readonly probSocketGateway: ProbGateway,
+    @Inject('MSService01') private msService01: MSService,
+    @Inject('MSService02') private msService02: MSService,
+    @Inject('MSService03') private msService03: MSService,
+    @Inject('MSService04') private msService04: MSService,
+    @Inject('MSService05') private msService05: MSService,
+    @Inject('MSService06') private msService06: MSService,
+    @Inject('MSService07') private msService07: MSService,
+    @Inject('MSService08') private msService08: MSService,
+    @Inject('MSService09') private msService09: MSService,
+    @Inject('MSService10') private msService10: MSService,
+    @Inject('MSService11') private msService11: MSService,
+    @Inject('MSService12') private msService12: MSService,
+    @Inject('GSMIdleMCIService') private gsmIdleMCIService: GSMIdleService,
+    @Inject('GSMIdleMTNService') private gsmIdleMTNService: GSMIdleService,
+    @Inject('WCDMAIdleMCIService') private wcdmaIdleMCIService: WCDMAIdleService,
+    @Inject('WCDMAIdleMTNService') private wcdmaIdleMTNService: WCDMAIdleService,
+    @Inject('LTEIdleMCIService') private lteIdleMCIService: LTEIdleService,
+    @Inject('LTEIdleMTNService') private lteIdleMTNService: LTEIdleService,
+    @Inject('GSMLongCallMCIService') private gsmLongCallMCIService: GSMLongCallService,
+    @Inject('GSMLongCallMTNService') private gsmLongCallMTNService: GSMLongCallService,
+    @Inject('WCDMALongCallMCIService') private wcdmaLongCallMCIService: WCDMALongCallService,
+    @Inject('WCDMALongCallMTNService') private wcdmaLongCallMTNService: WCDMALongCallService,
 
   ) {
   }
@@ -276,7 +300,20 @@ export class ProbService implements OnModuleInit {
         this.probSocketGateway.emitDTCurrentStatus(global.dtCurrentStatus)
         this.logger.error('------------------- start ms service -----------------------')
         this.portsInitializing = true
-        await this.msService.portsInitializing(this.inspection)
+        await Promise.all([
+          this.msService01.portsInitializing(this.inspection),
+          this.msService02.portsInitializing(this.inspection),
+          this.msService03.portsInitializing(this.inspection),
+          this.msService04.portsInitializing(this.inspection),
+          this.msService05.portsInitializing(this.inspection),
+          this.msService06.portsInitializing(this.inspection),
+          this.msService07.portsInitializing(this.inspection),
+          this.msService08.portsInitializing(this.inspection),
+          this.msService09.portsInitializing(this.inspection),
+          this.msService10.portsInitializing(this.inspection),
+          this.msService11.portsInitializing(this.inspection),
+          this.msService12.portsInitializing(this.inspection),
+        ])
         this.portsInitialized = true
         this.portsInitializing = false
         this.logger.error('------------------- end ms service -----------------------')
@@ -319,38 +356,46 @@ export class ProbService implements OnModuleInit {
       global.dtCurrentStatus = dtCurrentStatusENUM.starting
       this.probSocketGateway.emitDTCurrentStatus(global.dtCurrentStatus)
 
-      // this.logger.error('------------------- start gsm idle service -----------------------')
-      // await this.gsmIdleService.portsInitializing(2, this.inspection)
-      // this.logger.error('------------------- end gsm idle service -----------------------')
+      const msData = await this.msDataRepo.find({ where: { inspection: { id: this.inspection.id } }, select: { dmPortNumber: true, activeScenario: true } })
 
-      // this.logger.error('------------------- start wcdma idle service -----------------------')
-      // await this.wcdmaIdleService.portsInitializing(6, this.inspection)
-      // this.logger.error('------------------- end wcdma idle service -----------------------')
+      await Promise.all(
+        msData.map(ms => {
+          switch (ms.activeScenario) {
+            case scenarioName.GSMIdleMCI:
+              return this.gsmIdleMCIService.portsInitializing(ms.dmPortNumber, this.inspection)
 
-      // this.logger.error('------------------- start lte idle service -----------------------')
-      // await this.lteIdleService.portsInitializing(10, this.inspection)
-      // this.logger.error('------------------- end lte idle service -----------------------')
+            case scenarioName.WCDMAIdleMCI:
+              return this.wcdmaIdleMCIService.portsInitializing(ms.dmPortNumber, this.inspection)
 
-      // this.logger.error('------------------- start alltech idle service -----------------------')
-      // await this.alltechIdleService.portsInitializing(14, this.inspection)
-      // this.logger.error('------------------- end alltech idle service -----------------------')
+            case scenarioName.LTEIdleMCI:
+              return this.lteIdleMCIService.portsInitializing(ms.dmPortNumber, this.inspection)
 
-      // this.logger.error('------------------- start gsm LongCall service -----------------------')
-      // await this.gsmLongCallService.portsInitializing(18, this.inspection)
-      // this.logger.error('------------------- end gsm LongCall service -----------------------')
+            case scenarioName.GSMLongCallMCI:
+              return this.gsmLongCallMCIService.portsInitializing(ms.dmPortNumber, this.inspection)
 
-      // this.logger.error('------------------- start wcdma LongCall service -----------------------')
-      // await this.wcdmaLongCallService.portsInitializing(22, this.inspection)
-      // this.logger.error('------------------- end wcdma LongCall service -----------------------')
+            case scenarioName.WCDMALongCallMCI:
+              return this.wcdmaLongCallMCIService.portsInitializing(ms.dmPortNumber, this.inspection)
 
+            case scenarioName.GSMIdleMTN:
+              return this.gsmIdleMTNService.portsInitializing(ms.dmPortNumber, this.inspection)
 
-      await Promise.all([
-        this.gsmIdleService.portsInitializing(2, this.inspection),
-        this.wcdmaIdleService.portsInitializing(6, this.inspection),
-        this.lteIdleService.portsInitializing(10, this.inspection),
-        this.gsmLongCallService.portsInitializing(18, this.inspection),
-        this.wcdmaLongCallService.portsInitializing(22, this.inspection),
-      ])
+            case scenarioName.WCDMAIdleMTN:
+              return this.wcdmaIdleMTNService.portsInitializing(ms.dmPortNumber, this.inspection)
+
+            case scenarioName.LTEIdleMTN:
+              return this.lteIdleMTNService.portsInitializing(ms.dmPortNumber, this.inspection)
+
+            case scenarioName.GSMLongCallMTN:
+              return this.gsmLongCallMTNService.portsInitializing(ms.dmPortNumber, this.inspection)
+
+            case scenarioName.WCDMALongCallMTN:
+              return this.wcdmaLongCallMTNService.portsInitializing(ms.dmPortNumber, this.inspection)
+
+            default:
+              return;
+          }
+        })
+      )
 
       this.firstStartDT = true
       this.startRecording()
@@ -389,9 +434,27 @@ export class ProbService implements OnModuleInit {
 
       await this.gpsService.portsTermination()
 
-      await sleep(1000)
+      await sleep(2500)
 
-      await this.msService.portsTermination()
+      await Promise.all([
+        this.msService01.portsTermination(),
+        this.msService02.portsTermination(),
+        this.msService03.portsTermination(),
+        this.msService04.portsTermination(),
+        this.msService05.portsTermination(),
+        this.msService06.portsTermination(),
+        this.msService07.portsTermination(),
+        this.msService08.portsTermination(),
+        this.msService09.portsTermination(),
+        this.msService10.portsTermination(),
+        this.msService11.portsTermination(),
+        this.msService12.portsTermination(),
+
+      ]).then((res) => {
+        this.logger.warn('Ports Terminated.')
+      }).catch(ex => {
+        this.logger.error(ex)
+      })
 
       await sleep(1000)
 
@@ -415,6 +478,10 @@ export class ProbService implements OnModuleInit {
       global.dtCurrentStatus = dtCurrentStatusENUM.stopped
       this.probSocketGateway.emitDTCurrentStatus(global.dtCurrentStatus)
 
+      if (process.env.NODE_ENV === 'production') {
+        process.exit(1)
+      }
+
       return { msg: 'DT stopped successfully.' }
     }
     else {
@@ -424,12 +491,16 @@ export class ProbService implements OnModuleInit {
 
   async truncate() {
     // Truncate table using raw SQL query
-    await this.gsmIdlesRepo.query(`delete from ${this.gsmIdlesRepo.metadata.tableName}`);
-    await this.wcdmaIdlesRepo.query(`delete from ${this.wcdmaIdlesRepo.metadata.tableName}`);
-    await this.lteIdlesRepo.query(`delete from ${this.lteIdlesRepo.metadata.tableName}`);
-    await this.allTechIdlesRepo.query(`delete from ${this.allTechIdlesRepo.metadata.tableName}`);
-    await this.gsmLongCallRepo.query(`delete from ${this.gsmLongCallRepo.metadata.tableName}`);
-    await this.wcdmaLongCallRepo.query(`delete from ${this.wcdmaLongCallRepo.metadata.tableName}`);
+    await this.gsmIdlesMCIRepo.query(`delete from ${this.gsmIdlesMCIRepo.metadata.tableName}`);
+    await this.wcdmaIdlesMCIRepo.query(`delete from ${this.wcdmaIdlesMCIRepo.metadata.tableName}`);
+    await this.lteIdlesMCIRepo.query(`delete from ${this.lteIdlesMCIRepo.metadata.tableName}`);
+    await this.gsmLongCallMCIRepo.query(`delete from ${this.gsmLongCallMCIRepo.metadata.tableName}`);
+    await this.wcdmaLongCallMCIRepo.query(`delete from ${this.wcdmaLongCallMCIRepo.metadata.tableName}`);
+    await this.gsmIdlesMTNRepo.query(`delete from ${this.gsmIdlesMTNRepo.metadata.tableName}`);
+    await this.wcdmaIdlesMTNRepo.query(`delete from ${this.wcdmaIdlesMTNRepo.metadata.tableName}`);
+    await this.lteIdlesMTNRepo.query(`delete from ${this.lteIdlesMTNRepo.metadata.tableName}`);
+    await this.gsmLongCallMTNRepo.query(`delete from ${this.gsmLongCallMTNRepo.metadata.tableName}`);
+    await this.wcdmaLongCallMTNRepo.query(`delete from ${this.wcdmaLongCallMTNRepo.metadata.tableName}`);
     await this.ftpDLRepo.query(`delete from ${this.ftpDLRepo.metadata.tableName}`);
     await this.ftpULRepo.query(`delete from ${this.ftpULRepo.metadata.tableName}`);
     await this.quectelsRepo.query(`delete from ${this.quectelsRepo.metadata.tableName}`);
@@ -443,10 +514,10 @@ export class ProbService implements OnModuleInit {
     this.logger.error(JSON.stringify(inspection))
 
     if (inspection) {
-      const gsmIdleData = await this.gpsDataRepo.find({ where: { inspection: { id: inspectionId } }, relations: { gsmIdleSamples: true } })
+      const gsmIdleData = await this.gpsDataRepo.find({ where: { inspection: { id: inspectionId } }, relations: { gsmIdleSamplesMCI: true } })
       const gsmIdle_kmlContent = this.generateKMLContent(
         gsmIdleData
-          .map(x => ({ ...x, ...x.gsmIdleSamples[0] }))
+          .map(x => ({ ...x, ...x.gsmIdleSamplesMCI[0] }))
           .map(point => ({
             location: {
               latitude: point.latitude,
@@ -471,10 +542,10 @@ export class ProbService implements OnModuleInit {
       fs.writeFileSync(gsmIdle_filePath, gsmIdle_kmlContent);
 
 
-      const wcdmaIdleData = await this.gpsDataRepo.find({ where: { inspection: { id: inspectionId } }, relations: { wcdmaIdleSamples: true } })
+      const wcdmaIdleData = await this.gpsDataRepo.find({ where: { inspection: { id: inspectionId } }, relations: { wcdmaIdleSamplesMCI: true } })
       const wcdmaIdle_kmlContent = this.generateKMLContent(
         wcdmaIdleData
-          .map(x => ({ ...x, ...x.wcdmaIdleSamples[0] }))
+          .map(x => ({ ...x, ...x.wcdmaIdleSamplesMCI[0] }))
           .map(point => ({
             location: {
               latitude: point.latitude,
@@ -498,10 +569,10 @@ export class ProbService implements OnModuleInit {
       fs.writeFileSync(wcdmaIdle_filePath, wcdmaIdle_kmlContent);
 
 
-      const lteIdleData = await this.gpsDataRepo.find({ where: { inspection: { id: inspectionId } }, relations: { lteIdleSamples: true } })
+      const lteIdleData = await this.gpsDataRepo.find({ where: { inspection: { id: inspectionId } }, relations: { lteIdleSamplesMCI: true } })
       const lteIdle_kmlContent = this.generateKMLContent(
         lteIdleData
-          .map(x => ({ ...x, ...x.lteIdleSamples[0] }))
+          .map(x => ({ ...x, ...x.lteIdleSamplesMCI[0] }))
           .map(point => ({
             location: {
               latitude: point.latitude,
@@ -525,10 +596,10 @@ export class ProbService implements OnModuleInit {
       fs.writeFileSync(lteIdle_filePath, lteIdle_kmlContent);
 
 
-      const gsmLongCallData = await this.gpsDataRepo.find({ where: { inspection: { id: inspectionId } }, relations: { gsmLongCallSamples: true } })
+      const gsmLongCallData = await this.gpsDataRepo.find({ where: { inspection: { id: inspectionId } }, relations: { gsmLongCallSamplesMCI: true } })
       const gsmLongCall_kmlContent = this.generateKMLContent(
         gsmLongCallData
-          .map(x => ({ ...x, ...x.gsmLongCallSamples[0] }))
+          .map(x => ({ ...x, ...x.gsmLongCallSamplesMCI[0] }))
           .map(point => ({
             location: {
               latitude: point.latitude,
@@ -553,10 +624,10 @@ export class ProbService implements OnModuleInit {
       fs.writeFileSync(gsmLongCall_filePath, gsmLongCall_kmlContent);
 
 
-      const wcdmaLongCallData = await this.gpsDataRepo.find({ where: { inspection: { id: inspectionId } }, relations: { wcdmaLongCallSamples: true } })
+      const wcdmaLongCallData = await this.gpsDataRepo.find({ where: { inspection: { id: inspectionId } }, relations: { wcdmaLongCallSamplesMCI: true } })
       const wcdmaLongCall_kmlContent = this.generateKMLContent(
         wcdmaLongCallData
-          .map(x => ({ ...x, ...x.wcdmaLongCallSamples[0] }))
+          .map(x => ({ ...x, ...x.wcdmaLongCallSamplesMCI[0] }))
           .map(point => ({
             location: {
               latitude: point.latitude,
@@ -625,12 +696,13 @@ export class ProbService implements OnModuleInit {
     return ({ logLocCode })
   }
 
-  async getDTCurrentGSMLockIdle() {
-    if (this.portsInitialized && this.gpsInitialized && this.inspection) {
-      const gsmIdleData = await this.gpsDataRepo.find({ where: { inspection: { id: this.inspection.id } }, relations: { gsmIdleSamples: true } })
-      // const gsmIdleData = await this.gpsDataRepo.find({ where: { inspection: { id: 1 } }, relations: { gsmIdleSamples: true } })
+  async getDTCurrentGSMLockIdle(op: "MCI" | "MTN") {
+    if (this.portsInitialized && this.gpsInitialized && this.inspection && op === "MCI") {
+      const gsmIdleData = await this.gpsDataRepo.find({ where: { inspection: { id: this.inspection.id } }, relations: { gsmIdleSamplesMCI: true } })
       return gsmIdleData
-
+    } else if (this.portsInitialized && this.gpsInitialized && this.inspection && op === "MTN") {
+      const gsmIdleData = await this.gpsDataRepo.find({ where: { inspection: { id: this.inspection.id } }, relations: { gsmIdleSamplesMTN: true } })
+      return gsmIdleData
     }
     else {
       return ([])

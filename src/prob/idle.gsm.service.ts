@@ -5,10 +5,11 @@ import { SerialPort } from "serialport";
 import { commands } from "./enum/commands.enum";
 import { MSData } from "./entities/ms-data.entity";
 import { techType } from "./enum/techType.enum";
-import { GSMIdle } from './entities/gsmIdle.entity';
+import { GSMIdleMCI } from './entities/gsmIdleMCI.entity';
 import { Inspection } from "./entities/inspection.entity";
 import { GPSData } from './entities/gps-data.entity';
 import { ProbGateway } from "./prob.gateway";
+import { GSMIdleMTN } from "./entities/gsmIdleMTN.entity";
 
 const correctPattern = {
     'lockGSM': /AT\+QCFG="nwscanmode",1\r\r\nOK\r\n/,
@@ -33,9 +34,10 @@ export class GSMIdleService {
 
     constructor(
         @InjectRepository(MSData) private msDataRepo: Repository<MSData>,
-        @InjectRepository(GSMIdle) private gsmIdlesRepo: Repository<GSMIdle>,
+        @InjectRepository(GSMIdleMCI) private gsmIdlesRepo: Repository<GSMIdleMCI> | Repository<GSMIdleMTN>,
         @InjectRepository(GPSData) private gpsDataRepo: Repository<GPSData>,
         private readonly probSocketGateway: ProbGateway,
+        private op: "MCI" | "MTN"
     ) { }
 
     async portsInitializing(dmPort: number, inspection: Inspection) {
@@ -176,10 +178,11 @@ export class GSMIdleService {
                             location: location
                         })
                         const save = await this.gsmIdlesRepo.save(newEntry)
-                        this.probSocketGateway.emitDTGSMIdle({ ...location, gsmIdleSamples: [save] })
+
+                        this.probSocketGateway.emitDTGSMIdle({ ...location, gsmIdleSamplesMCI: [save] }, this.op)
 
                         if (location === null || location === undefined || !location.latitude) {
-                            this.logger.log('err in location')
+                            this.logger.log('err in location', location)
                         }
 
                         if (gsmData.rxlev === '-' || gsmData.rxlev === ' - ' || gsmData.rxlev === '' || gsmData.rxlev === null || gsmData.rxlev === undefined) {

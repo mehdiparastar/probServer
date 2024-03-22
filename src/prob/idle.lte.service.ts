@@ -5,9 +5,11 @@ import { SerialPort } from "serialport";
 import { commands } from "./enum/commands.enum";
 import { MSData } from "./entities/ms-data.entity";
 import { techType } from "./enum/techType.enum";
-import { LTEIdle } from './entities/lteIdle.entity';
+import { LTEIdleMCI } from './entities/lteIdleMCI.entity';
 import { Inspection } from "./entities/inspection.entity";
 import { GPSData } from './entities/gps-data.entity';
+import { ProbGateway } from "./prob.gateway";
+import { LTEIdleMTN } from "./entities/lteIdleMTN.entity";
 
 const correctPattern = {
     'lockLTE': /AT\+QCFG="nwscanmode",3\r\r\nOK\r\n/,
@@ -32,8 +34,10 @@ export class LTEIdleService {
 
     constructor(
         @InjectRepository(MSData) private msDataRepo: Repository<MSData>,
-        @InjectRepository(LTEIdle) private lteIdlesRepo: Repository<LTEIdle>,
+        @InjectRepository(LTEIdleMCI) private lteIdlesRepo: Repository<LTEIdleMCI> | Repository<LTEIdleMTN>,
         @InjectRepository(GPSData) private gpsDataRepo: Repository<GPSData>,
+        private readonly probSocketGateway: ProbGateway,
+        private op: "MCI" | "MTN"
     ) { }
 
     async portsInitializing(dmPort: number, inspection: Inspection) {

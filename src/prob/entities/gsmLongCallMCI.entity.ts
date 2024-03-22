@@ -1,9 +1,10 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
-import { Inspection } from "./inspection.entity";
+import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { callStatus } from "../enum/callStatus.enum";
 import { GPSData } from "./gps-data.entity";
+import { Inspection } from "./inspection.entity";
 
 @Entity()
-export class GSMIdle {
+export class GSMLongCallMCI {
     @PrimaryGeneratedColumn()
     id: number;
 
@@ -82,10 +83,13 @@ export class GSMIdle {
     @Column({ nullable: true })
     voicecodec: string
 
-    @ManyToOne(() => Inspection, (inspection) => inspection.gsmIdles, { nullable: false })
+    @Column({ type: 'enum', enum: callStatus, default: callStatus.Idle }) // this should be idle at first
+    callingStatus: callStatus
+
+    @ManyToOne(() => Inspection, (inspection) => inspection.gsmLongCallsMCI, { nullable: false })
     inspection: Inspection;
 
-    @ManyToOne(() => GPSData, (location) => location.gsmIdleSamples, { nullable: true })
+    @ManyToOne(() => GPSData, (location) => location.gsmLongCallSamplesMCI, { nullable: true })
     location: GPSData
 
     @CreateDateColumn()

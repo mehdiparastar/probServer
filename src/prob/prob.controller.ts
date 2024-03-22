@@ -75,9 +75,9 @@ export class ProbController {
     return this.probService.getDTCurrentLogLocCode()
   }
 
-  @Get('getDTCurrentGSMLockIdle')
+  @Get('getDTCurrentGSMLockIdle_MCI')
   getDTCurrentGSMLockIdle() {
-    return this.probService.getDTCurrentGSMLockIdle()
+    return this.probService.getDTCurrentGSMLockIdle("MCI")
   }
 
 

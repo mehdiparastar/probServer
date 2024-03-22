@@ -7,8 +7,10 @@ import { MSData } from "./entities/ms-data.entity";
 import { techType } from "./enum/techType.enum";
 import { Inspection } from "./entities/inspection.entity";
 import { GPSData } from './entities/gps-data.entity';
-import { WCDMALongCall } from "./entities/wcdmaLongCall.entity";
+import { WCDMALongCallMCI } from "./entities/wcdmaLongCallMCI.entity";
 import { callStatus as msCallStatus } from './enum/callStatus.enum';
+import { ProbGateway } from "./prob.gateway";
+import { WCDMALongCallMTN } from "./entities/wcdmaLongCallMTN.entity";
 
 
 const correctPattern = {
@@ -35,8 +37,11 @@ export class WCDMALongCallService {
 
     constructor(
         @InjectRepository(MSData) private msDataRepo: Repository<MSData>,
-        @InjectRepository(WCDMALongCall) private wcdmaLongCallsRepo: Repository<WCDMALongCall>,
+        @InjectRepository(WCDMALongCallMCI) private wcdmaLongCallsRepo: Repository<WCDMALongCallMCI> | Repository<WCDMALongCallMTN>,
         @InjectRepository(GPSData) private gpsDataRepo: Repository<GPSData>,
+        private readonly probSocketGateway: ProbGateway,
+        private op: "MCI" | "MTN"
+
     ) { }
 
     async portsInitializing(dmPort: number, inspection: Inspection) {

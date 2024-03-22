@@ -96,8 +96,8 @@ export class ProbGateway
     this.io.to(probSocketInItRoom).emit('dtCurrentLogLocCode', { logLocCode })
   }
 
-  emitDTGSMIdle(gsmIdleData: GPSData) {
-    this.io.to(probSocketInItRoom).emit('dtCurrentGSMLockIdle', gsmIdleData)
+  emitDTGSMIdle(gsmIdleData: GPSData, op: "MCI" | "MTN") {
+    this.io.to(probSocketInItRoom).emit('dtCurrentGSMLockIdle' + "_" + op, gsmIdleData)
   }
 }
 

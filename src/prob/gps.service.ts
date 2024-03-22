@@ -17,8 +17,8 @@ function convertDMStoDD(degrees: string, direction: string) {
     return direction === 'S' || direction === 'W' ? `${-dd}` : `${dd}`;
 }
 
-const primaryNMEAPorts = [1, 5, 9, 13, 17, 21, 25, 29]
-const primaryDMPorts = [2, 6, 10, 14, 18, 22, 26, 30]
+const primaryNMEAPorts = [1, 5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 45]
+const primaryDMPorts = [2, 6, 10, 14, 18, 22, 26, 30, 34, 38, 42, 46]
 
 @Injectable()
 export class GPSService {
@@ -58,64 +58,101 @@ export class GPSService {
         return { time, latitude, longitude, groundSpeed, trackAngle };
     }
 
+    async closePort(port: SerialPort): Promise<void> {
+        if (port.isOpen)
+            return new Promise((resolve, reject) => {
+                port.close(error => {
+                    if (error) {
+                        reject(error);
+                    } else {
+                        resolve();
+                    }
+                });
+            });
+    }
+
+
     async portsTermination() {
+        try {
+            // this.msService.initializedPorts[`ttyUSB${primaryDMPorts[primaryNMEAPorts.indexOf(this.selectedGPSPort)]}`]
 
-        // this.msService.initializedPorts[`ttyUSB${primaryDMPorts[primaryNMEAPorts.indexOf(this.selectedGPSPort)]}`]
+            const selectedGPSDMPortNumber = this.dmPorts[this.nmeaPorts.indexOf(this.selectedGPSPort)] //primaryDMPorts[primaryNMEAPorts.indexOf(this.selectedGPSPort)]
 
-        for (const portNumber of ([...primaryDMPorts, ...primaryNMEAPorts])) {
-            if (this.initializedPorts[`ttyUSB${portNumber}`] && this.initializedPorts[`ttyUSB${portNumber}`].isOpen === true) {
-                this.initializedPorts[`ttyUSB${portNumber}`].close()
-                this.logger.debug(`port ${portNumber} terminate successfully.`)
-            }
-        }
+            const port = this.initializedPorts[`ttyUSB${selectedGPSDMPortNumber}`]
 
-        await sleep(2000)
+            await this.closePort(port)
 
-        const port = new SerialPort({ path: `/dev/ttyUSB${primaryDMPorts[primaryNMEAPorts.indexOf(this.selectedGPSPort)]}`, baudRate: 115200 });
+            port.end()
 
-        port.on('open', async () => {
-            this.logger.warn(`try to disable gps on port ${this.selectedGPSPort} from ${primaryDMPorts[primaryNMEAPorts.indexOf(this.selectedGPSPort)]}`)
-            port.write(commands.disableGPS)
-        })
+            await sleep(3000)
 
-
-        port.on('data', async (data) => {
-            const response = data.toString()
-            this.logger.warn(response)
-
-            if (response.indexOf('OK') > 0) {
-                this.logger.warn('disabled')
-                if (port.isOpen === true)
-                    port.close()
-            }
-        })
-
-        port.on('error', (err) => {
-            this.logger.error(`Error on port ${primaryDMPorts[primaryNMEAPorts.indexOf(this.selectedGPSPort)]}: ${err.message}`);
-        });
-
-
-        await sleep(4000)
-
-        await new Promise((resolve) => {
-            const checkCondition = () => {
-                const cond = port.isOpen === false
-
-                if (cond) {
-                    resolve(1);
-                } else {
-                    setTimeout(checkCondition, 500); // Adjust the interval as needed
+            for (const portNumber of ([...primaryDMPorts, ...primaryNMEAPorts])) {
+                if (this.initializedPorts[`ttyUSB${portNumber}`] && this.initializedPorts[`ttyUSB${portNumber}`].isOpen === true) {
+                    this.initializedPorts[`ttyUSB${portNumber}`].removeAllListeners('data')
+                    await this.closePort(this.initializedPorts[`ttyUSB${portNumber}`])
+                    this.logger.debug(`port ${portNumber} terminate successfully.`)
                 }
-            };
+            }
 
-            checkCondition();
-        });
+            this.selectedGPSPort = undefined
+            this.disabledGPSPorts = []
+            this.gpsPort = undefined
+            this.initializingEnd = false
+            this.initializedPorts = {}
 
-        this.selectedGPSPort = undefined
-        this.disabledGPSPorts = []
-        this.gpsPort = undefined
-        this.initializingEnd = false
-        this.initializedPorts = {}
+            const newPort = new SerialPort({ path: `/dev/ttyUSB${selectedGPSDMPortNumber}`, baudRate: 115200 });
+
+            newPort.on('open', async () => {
+                this.logger.warn(`try to disable gps on port ${this.selectedGPSPort} from ${selectedGPSDMPortNumber}`)
+                newPort.write(commands.disableGPS)
+            })
+
+
+            newPort.on('data', async (data) => {
+                const response = data.toString()
+                this.logger.warn(response)
+
+                if (response.indexOf('OK') > 0) {
+                    this.logger.warn('disabled')
+                    if (!!newPort) {
+                        await this.closePort(newPort)
+                    }
+                }
+            })
+
+            newPort.on('error', (err) => {
+                this.logger.error(`Error on port ${selectedGPSDMPortNumber}: ${err.message}`);
+                newPort.open(err => {
+                    if (err) {
+                        this.logger.error(err)
+                    } else {
+                        newPort.write(commands.disableGPS)
+                    }
+                })
+                newPort.write(commands.disableGPS)
+            });
+
+            await sleep(1000)
+
+            await new Promise((resolve) => {
+                const checkCondition = () => {
+                    const cond = newPort.isOpen === false
+
+                    if (cond) {
+                        resolve(1);
+                    } else {
+                        setTimeout(checkCondition, 500); // Adjust the interval as needed
+                    }
+                };
+
+                checkCondition();
+            });
+
+            console.log(12)
+        }
+        catch (ex) {
+            this.logger.error(ex)
+        }
     }
 
     async portsInitializing(inspection: Inspection) {
@@ -155,11 +192,11 @@ export class GPSService {
 
                     if (response.indexOf('+QGPS: 0') >= 0) {
                         if (this.disabledGPSPorts.includes(portNumber)) {
-                            if (this.initializedPorts[`ttyUSB${portNumber}`].isOpen === true)
-                                this.initializedPorts[`ttyUSB${portNumber}`].close()
+                            if (this.initializedPorts[`ttyUSB${portNumber}`])
+                                await this.closePort(this.initializedPorts[`ttyUSB${portNumber}`])
 
-                            if (this.initializedPorts[`ttyUSB${this.nmeaPorts[this.dmPorts.indexOf(portNumber)]}`].isOpen === true)
-                                this.initializedPorts[`ttyUSB${this.nmeaPorts[this.dmPorts.indexOf(portNumber)]}`].close()
+                            if (this.initializedPorts[`ttyUSB${this.nmeaPorts[this.dmPorts.indexOf(portNumber)]}`])
+                                await this.closePort(this.initializedPorts[`ttyUSB${this.nmeaPorts[this.dmPorts.indexOf(portNumber)]}`])
                         }
                         else {
                             this.disabledGPSPorts.push(portNumber)
@@ -183,8 +220,8 @@ export class GPSService {
                             }
                             else {
                                 if (Object.values(this.initializedPorts).filter(item => item.isOpen).length === 2) {
-                                    if (this.initializedPorts[`ttyUSB${this.dmPorts[this.nmeaPorts.indexOf(this.selectedGPSPort)]}`].isOpen === true)
-                                        this.initializedPorts[`ttyUSB${this.dmPorts[this.nmeaPorts.indexOf(this.selectedGPSPort)]}`].close()
+                                    if (this.initializedPorts[`ttyUSB${this.dmPorts[this.nmeaPorts.indexOf(this.selectedGPSPort)]}`])
+                                        await this.closePort(this.initializedPorts[`ttyUSB${this.dmPorts[this.nmeaPorts.indexOf(this.selectedGPSPort)]}`])
                                 }
                                 else if (Object.values(this.initializedPorts).filter(item => item.isOpen).length === 1) {
 
@@ -229,26 +266,53 @@ export class GPSService {
                                     if (this.gpsPort === undefined) {
                                         this.gpsPort = portNumber
                                         const dmPortNumberOfGpsPort = this.dmPorts[this.nmeaPorts.indexOf(this.gpsPort)]
-                                        const dmPortsExceptMappedGpsPort = this.dmPorts.filter(p => p !== dmPortNumberOfGpsPort)
 
                                         const update = await this.msDataRepo.update({ dmPortNumber: dmPortNumberOfGpsPort, inspection: { id: inspection.id } }, { isGPS: true })
                                         this.logger.warn(`port ${this.gpsPort} set as gps port.`)
 
-                                        const gsmIdleScenario = await this.msDataRepo.update({ dmPortNumber: dmPortNumberOfGpsPort, inspection: { id: inspection.id } }, { activeScenario: scenarioName.GSMIdle })
+                                        const allMSData = await this.msDataRepo.find({ select: { dmPortNumber: true, IMSI: true } })
 
-                                        const wcdmaIdleScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[0], inspection: { id: inspection.id } }, { activeScenario: scenarioName.WCDMAIdle })
+                                        let mciDMPorts = allMSData.filter(ms => ms.IMSI.slice(0, 6).includes('43211'))
+                                        let mtnDMPorts = allMSData.filter(ms => ms.IMSI.slice(0, 6).includes('43235'))
 
-                                        const lteIdleScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[1], inspection: { id: inspection.id } }, { activeScenario: scenarioName.LTEIdle })
+                                        if (mciDMPorts.map(ms => ms.dmPortNumber).includes(dmPortNumberOfGpsPort)) {
+                                            const gsmIdleMCIScenario = await this.msDataRepo.update({ dmPortNumber: dmPortNumberOfGpsPort, inspection: { id: inspection.id } }, { activeScenario: scenarioName.GSMIdleMCI })
 
-                                        const allTechIdleScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[2], inspection: { id: inspection.id } }, { activeScenario: scenarioName.ALLTechIdle })
+                                            mciDMPorts = mciDMPorts.filter(ms => ms.dmPortNumber !== dmPortNumberOfGpsPort)
 
-                                        const gsmLongCallScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[3], inspection: { id: inspection.id } }, { activeScenario: scenarioName.GSMLongCall })
+                                            const wcdmaIdleMCIScenario = await this.msDataRepo.update({ dmPortNumber: mciDMPorts[0].dmPortNumber, inspection: { id: inspection.id } }, { activeScenario: scenarioName.WCDMAIdleMCI })
+                                            const lteIdleMCIScenario = await this.msDataRepo.update({ dmPortNumber: mciDMPorts[1].dmPortNumber, inspection: { id: inspection.id } }, { activeScenario: scenarioName.LTEIdleMCI })
+                                            const gsmLongCallMCIScenario = await this.msDataRepo.update({ dmPortNumber: mciDMPorts[2].dmPortNumber, inspection: { id: inspection.id } }, { activeScenario: scenarioName.GSMLongCallMCI })
+                                            const wcdmaLongCallMCIScenario = await this.msDataRepo.update({ dmPortNumber: mciDMPorts[3].dmPortNumber, inspection: { id: inspection.id } }, { activeScenario: scenarioName.WCDMALongCallMCI })
+                                            const ftpDLMCIScenario = await this.msDataRepo.update({ dmPortNumber: mciDMPorts[4].dmPortNumber, inspection: { id: inspection.id } }, { activeScenario: scenarioName.FTP_DL_TH_MCI })
 
-                                        const wcdmaLongCallScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[4], inspection: { id: inspection.id } }, { activeScenario: scenarioName.WCDMALongCall })
+                                            const gsmIdleMTNScenario = await this.msDataRepo.update({ dmPortNumber: mtnDMPorts[0].dmPortNumber, inspection: { id: inspection.id } }, { activeScenario: scenarioName.GSMIdleMTN })
+                                            const wcdmaIdleMTNScenario = await this.msDataRepo.update({ dmPortNumber: mtnDMPorts[1].dmPortNumber, inspection: { id: inspection.id } }, { activeScenario: scenarioName.WCDMAIdleMTN })
+                                            const lteIdleMTNScenario = await this.msDataRepo.update({ dmPortNumber: mtnDMPorts[2].dmPortNumber, inspection: { id: inspection.id } }, { activeScenario: scenarioName.LTEIdleMTN })
+                                            const gsmLongCallMTNScenario = await this.msDataRepo.update({ dmPortNumber: mtnDMPorts[3].dmPortNumber, inspection: { id: inspection.id } }, { activeScenario: scenarioName.GSMLongCallMTN })
+                                            const wcdmaLongCallMTNScenario = await this.msDataRepo.update({ dmPortNumber: mtnDMPorts[4].dmPortNumber, inspection: { id: inspection.id } }, { activeScenario: scenarioName.WCDMALongCallMTN })
+                                            const ftpDLMTNScenario = await this.msDataRepo.update({ dmPortNumber: mtnDMPorts[5].dmPortNumber, inspection: { id: inspection.id } }, { activeScenario: scenarioName.FTP_DL_TH_MTN })
+                                        }
 
-                                        const ftpDLScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[5], inspection: { id: inspection.id } }, { activeScenario: scenarioName.FTP_DL_TH })
+                                        if (mtnDMPorts.map(ms => ms.dmPortNumber).includes(dmPortNumberOfGpsPort)) {
+                                            const gsmIdleMTNScenario = await this.msDataRepo.update({ dmPortNumber: dmPortNumberOfGpsPort, inspection: { id: inspection.id } }, { activeScenario: scenarioName.GSMIdleMTN })
 
-                                        const ftpUlScenario = await this.msDataRepo.update({ dmPortNumber: dmPortsExceptMappedGpsPort[6], inspection: { id: inspection.id } }, { activeScenario: scenarioName.FTP_UL_TH })
+                                            mtnDMPorts = mtnDMPorts.filter(ms => ms.dmPortNumber !== dmPortNumberOfGpsPort)
+
+                                            const wcdmaIdleMTNScenario = await this.msDataRepo.update({ dmPortNumber: mtnDMPorts[0].dmPortNumber, inspection: { id: inspection.id } }, { activeScenario: scenarioName.WCDMAIdleMTN })
+                                            const lteIdleMTNScenario = await this.msDataRepo.update({ dmPortNumber: mtnDMPorts[1].dmPortNumber, inspection: { id: inspection.id } }, { activeScenario: scenarioName.LTEIdleMTN })
+                                            const gsmLongCallMTNScenario = await this.msDataRepo.update({ dmPortNumber: mtnDMPorts[2].dmPortNumber, inspection: { id: inspection.id } }, { activeScenario: scenarioName.GSMLongCallMTN })
+                                            const wcdmaLongCallMTNScenario = await this.msDataRepo.update({ dmPortNumber: mtnDMPorts[3].dmPortNumber, inspection: { id: inspection.id } }, { activeScenario: scenarioName.WCDMALongCallMTN })
+                                            const ftpDLMTNScenario = await this.msDataRepo.update({ dmPortNumber: mtnDMPorts[4].dmPortNumber, inspection: { id: inspection.id } }, { activeScenario: scenarioName.FTP_DL_TH_MTN })
+
+                                            const gsmIdleMCIScenario = await this.msDataRepo.update({ dmPortNumber: mciDMPorts[0].dmPortNumber, inspection: { id: inspection.id } }, { activeScenario: scenarioName.GSMIdleMCI })
+                                            const wcdmaIdleMCIScenario = await this.msDataRepo.update({ dmPortNumber: mciDMPorts[1].dmPortNumber, inspection: { id: inspection.id } }, { activeScenario: scenarioName.WCDMAIdleMCI })
+                                            const lteIdleMCIScenario = await this.msDataRepo.update({ dmPortNumber: mciDMPorts[2].dmPortNumber, inspection: { id: inspection.id } }, { activeScenario: scenarioName.LTEIdleMCI })
+                                            const gsmLongCallMCIScenario = await this.msDataRepo.update({ dmPortNumber: mciDMPorts[3].dmPortNumber, inspection: { id: inspection.id } }, { activeScenario: scenarioName.GSMLongCallMCI })
+                                            const wcdmaLongCallMCIScenario = await this.msDataRepo.update({ dmPortNumber: mciDMPorts[4].dmPortNumber, inspection: { id: inspection.id } }, { activeScenario: scenarioName.WCDMALongCallMCI })
+                                            const ftpDLMCIScenario = await this.msDataRepo.update({ dmPortNumber: mciDMPorts[5].dmPortNumber, inspection: { id: inspection.id } }, { activeScenario: scenarioName.FTP_DL_TH_MCI })
+                                        }
+                                    
 
                                         this.logger.warn(`all scenarios set.`)
                                         this.initializingEnd = true

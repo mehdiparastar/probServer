@@ -25,13 +25,13 @@ const sleep = async (milisecond: number) => {
     await new Promise(resolve => setTimeout(resolve, milisecond))
 }
 
-export const allDMPorts = [2, 6, 10, 14, 18, 22, 26, 30, 34, 38, 42, 46]
+export const allDMPorts = [2, 6, 10, 14, 18, 22, 26, 30]
 
 @Injectable()
 export class MSService {
     private readonly logger = new Logger(MSService.name);
     public initializedPorts: { [key: string]: SerialPort } = {}
-    // private dmPorts = allDMPorts
+    private dmPorts = allDMPorts
     private noCoverageCheck: { [key: string]: boolean } = {}
     private moduleInfo: { [key: string]: { modelName: string, revision: string } } = {}
     private moduleIMEI: { [key: string]: string } = {}
@@ -48,23 +48,7 @@ export class MSService {
     constructor(
         @InjectRepository(MSData) private msDataRepo: Repository<MSData>,
         private readonly probSocketGateway: ProbGateway,
-        private dmPorts: number[]
-    ) {
-        this.dmPorts = dmPorts
-    }
-
-    async closePort(port: SerialPort): Promise<void> {
-        if (port.isOpen)
-            return new Promise((resolve, reject) => {
-                port.close(error => {
-                    if (error) {
-                        reject(error);
-                    } else {
-                        resolve();
-                    }
-                });
-            });
-    }
+    ) { }
 
     async portsTermination() {
         this.moduleInfo = {}
@@ -80,13 +64,11 @@ export class MSService {
         this.dmPortIntervalId = {}
 
         for (const dmPort of this.dmPorts) {
-            if (!!this.initializedPorts[`ttyUSB${dmPort}`]) {
-                this.initializedPorts[`ttyUSB${dmPort}`].removeAllListeners('data')
-                await this.closePort(this.initializedPorts[`ttyUSB${dmPort}`])
+            if (this.initializedPorts[`ttyUSB${dmPort}`]) {
+                this.initializedPorts[`ttyUSB${dmPort}`].close()
                 this.logger.debug(`port ${dmPort} terminate successfully.`)
             }
         }
-
         this.initializedPorts = {}
     }
 
@@ -98,8 +80,7 @@ export class MSService {
 
                     if (progress === 100) {
                         clearInterval(this.dmPortIntervalId[`ttyUSB${dmPort}`])
-                        if (this.initializedPorts[`ttyUSB${dmPort}`])
-                            await this.closePort(this.initializedPorts[`ttyUSB${dmPort}`])
+                        this.initializedPorts[`ttyUSB${dmPort}`].close()
                         this.logger.debug(`port ${dmPort} initialized successfully then port closed.`)
                     }
                     else {
@@ -111,6 +92,7 @@ export class MSService {
             global.activeIntervals.push(this.dmPortIntervalId[`ttyUSB${dmPort}`])
             await this.waitForNextPortInit(dmPort)
         }
+        
 
         await sleep(5000)
 

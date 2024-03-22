@@ -1,20 +1,24 @@
 import { User } from "./prob/entities/user.entity";
 import { Quectel } from "./prob/entities/quectel.entity";
 import { GPSData } from "./prob/entities/gps-data.entity";
-import { GSMIdle } from "./prob/entities/gsmIdle.entity";
+import { GSMIdleMCI } from "./prob/entities/gsmIdleMCI.entity";
 import { Inspection } from "./prob/entities/inspection.entity";
-import { LTEIdle } from "./prob/entities/lteIdle.entity";
-import { WCDMAIdle } from "./prob/entities/wcdmaIdle.entity";
+import { LTEIdleMCI } from "./prob/entities/lteIdleMCI.entity";
+import { WCDMAIdleMCI } from "./prob/entities/wcdmaIdleMCI.entity";
 import { DataSource, DataSourceOptions } from "typeorm";
 import { config as dotenvConfig } from 'dotenv';
 import { registerAs } from "@nestjs/config";
 import { TypeOrmModuleOptions } from "@nestjs/typeorm";
-import { ALLTECHIdle } from "./prob/entities/alltechIdle.entity";
-import { GSMLongCall } from "./prob/entities/gsmLongCall.entity";
-import { WCDMALongCall } from "./prob/entities/wcdmaLongCall.entity";
+import { GSMLongCallMCI } from "./prob/entities/gsmLongCallMCI.entity";
+import { WCDMALongCallMCI } from "./prob/entities/wcdmaLongCallMCI.entity";
 import { FTPDL } from "./prob/entities/ftpDL.entity";
 import { FTPUL } from "./prob/entities/ftpUL.entity";
 import { MSData } from "./prob/entities/ms-data.entity";
+import { GSMIdleMTN } from "./prob/entities/gsmIdleMTN.entity";
+import { WCDMAIdleMTN } from "./prob/entities/wcdmaIdleMTN.entity";
+import { LTEIdleMTN } from "./prob/entities/lteIdleMTN.entity";
+import { GSMLongCallMTN } from "./prob/entities/gsmLongCallMTN.entity ";
+import { WCDMALongCallMTN } from "./prob/entities/wcdmaLongCallMTN.entity";
 
 dotenvConfig({ path: `.${process.env.NODE_ENV}.env` })
 
@@ -33,12 +37,16 @@ const config: TypeOrmModuleOptions = {
     Quectel,
     GPSData,
     Inspection,
-    GSMIdle,
-    WCDMAIdle,
-    LTEIdle,
-    ALLTECHIdle,
-    GSMLongCall,
-    WCDMALongCall,
+    GSMIdleMCI,
+    WCDMAIdleMCI,
+    LTEIdleMCI,
+    GSMLongCallMCI,
+    WCDMALongCallMCI,
+    GSMIdleMTN,
+    WCDMAIdleMTN,
+    LTEIdleMTN,
+    GSMLongCallMTN,
+    WCDMALongCallMTN,
     FTPDL,
     FTPUL,
     MSData

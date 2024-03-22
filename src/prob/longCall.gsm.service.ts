@@ -7,8 +7,10 @@ import { MSData } from "./entities/ms-data.entity";
 import { techType } from "./enum/techType.enum";
 import { Inspection } from "./entities/inspection.entity";
 import { GPSData } from './entities/gps-data.entity';
-import { GSMLongCall } from "./entities/gsmLongCall.entity";
+import { GSMLongCallMCI } from "./entities/gsmLongCallMCI.entity";
 import { callStatus as msCallStatus } from './enum/callStatus.enum';
+import { ProbGateway } from "./prob.gateway";
+import { GSMLongCallMTN } from "./entities/gsmLongCallMTN.entity ";
 
 
 const correctPattern = {
@@ -35,8 +37,10 @@ export class GSMLongCallService {
 
     constructor(
         @InjectRepository(MSData) private msDataRepo: Repository<MSData>,
-        @InjectRepository(GSMLongCall) private gsmLongCallsRepo: Repository<GSMLongCall>,
+        @InjectRepository(GSMLongCallMCI) private gsmLongCallsRepo: Repository<GSMLongCallMCI> | Repository<GSMLongCallMTN>,
         @InjectRepository(GPSData) private gpsDataRepo: Repository<GPSData>,
+        private readonly probSocketGateway: ProbGateway,
+        private op: "MCI" | "MTN"
     ) { }
 
     async portsInitializing(dmPort: number, inspection: Inspection) {

@@ -5,9 +5,11 @@ import { SerialPort } from "serialport";
 import { commands } from "./enum/commands.enum";
 import { MSData } from "./entities/ms-data.entity";
 import { techType } from "./enum/techType.enum";
-import { WCDMAIdle } from './entities/wcdmaIdle.entity';
+import { WCDMAIdleMCI } from './entities/wcdmaIdleMCI.entity';
 import { Inspection } from "./entities/inspection.entity";
 import { GPSData } from './entities/gps-data.entity';
+import { ProbGateway } from "./prob.gateway";
+import { WCDMAIdleMTN } from "./entities/wcdmaIdleMTN.entity";
 
 const correctPattern = {
     'lockWCDMA': /AT\+QCFG="nwscanmode",2\r\r\nOK\r\n/,
@@ -31,8 +33,10 @@ export class WCDMAIdleService {
 
     constructor(
         @InjectRepository(MSData) private msDataRepo: Repository<MSData>,
-        @InjectRepository(WCDMAIdle) private wcdmaIdlesRepo: Repository<WCDMAIdle>,
+        @InjectRepository(WCDMAIdleMCI) private wcdmaIdlesRepo: Repository<WCDMAIdleMCI> | Repository<WCDMAIdleMTN>,
         @InjectRepository(GPSData) private gpsDataRepo: Repository<GPSData>,
+        private readonly probSocketGateway: ProbGateway,
+        private op: "MCI" | "MTN"
     ) { }
 
     async portsInitializing(dmPort: number, inspection: Inspection) {
