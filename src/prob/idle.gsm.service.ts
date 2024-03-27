@@ -181,7 +181,7 @@ export class GSMIdleService {
                             })
                             const save = await this.gsmIdlesRepo.save(newEntry)
 
-                            this.probSocketGateway.emitDTGSMIdle({ ...location, gsmIdleSamplesMCI: [save] }, this.op)
+                            this.probSocketGateway.emitDTGSMIdle({ ...location, ['gsmIdleSamples' + this.op]: [save] }, this.op)
                         }
 
                         if (location === null || location === undefined || !location.latitude) {
@@ -233,7 +233,7 @@ export class GSMIdleService {
                             .getOne();
 
                         if (location !== null && location !== undefined) {
-                            
+
                             const newEntry = this.gsmIdlesRepo.create({
                                 tech: gsmIdleData_noCov.tech,
                                 mcc: gsmIdleData_noCov.mcc,
@@ -265,7 +265,7 @@ export class GSMIdleService {
                             })
                             const save = await this.gsmIdlesRepo.save(newEntry)
 
-                            this.probSocketGateway.emitDTGSMIdle({ ...location, gsmIdleSamplesMCI: [save] }, this.op)
+                            this.probSocketGateway.emitDTGSMIdle({ ...location, ['gsmIdleSamples' + this.op]: [save] }, this.op)
 
                         }
                     }

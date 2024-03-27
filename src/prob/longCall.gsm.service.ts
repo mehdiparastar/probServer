@@ -185,7 +185,7 @@ export class GSMLongCallService {
                             })
                             const save = await this.gsmLongCallsRepo.save(newEntry)
 
-                            this.probSocketGateway.emitDTGSMLongCall({ ...location, gsmLongCallSamplesMCI: [save] }, this.op)
+                            this.probSocketGateway.emitDTGSMLongCall({ ...location, ['gsmLongCallSamples' + this.op]: [save] }, this.op)
                         }
                     }
                 }
@@ -263,7 +263,7 @@ export class GSMLongCallService {
                             })
                             const save = await this.gsmLongCallsRepo.save(newEntry)
 
-                            this.probSocketGateway.emitDTGSMLongCall({ ...location, gsmLongCallSamplesMCI: [save] }, this.op)
+                            this.probSocketGateway.emitDTGSMLongCall({ ...location, ['gsmLongCallSamples' + this.op]: [save] }, this.op)
                         }
                     }
                 }

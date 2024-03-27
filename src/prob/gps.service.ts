@@ -270,12 +270,14 @@ export class GPSService {
                                         const update = await this.msDataRepo.update({ dmPortNumber: dmPortNumberOfGpsPort, inspection: { id: inspection.id } }, { isGPS: true })
                                         this.logger.warn(`port ${this.gpsPort} set as gps port.`)
 
-                                        const allMSData = await this.msDataRepo.find({ select: { dmPortNumber: true, IMSI: true } })
+                                        const allMSData = await this.msDataRepo.find({ where: { inspection: { id: inspection.id } }, select: { dmPortNumber: true, IMSI: true } })
 
                                         let mciDMPorts = allMSData.filter(ms => ms.IMSI.slice(0, 6).includes('43211'))
                                         let mtnDMPorts = allMSData.filter(ms => ms.IMSI.slice(0, 6).includes('43235'))
 
                                         if (mciDMPorts.map(ms => ms.dmPortNumber).includes(dmPortNumberOfGpsPort)) {
+                                            this.logger.warn("GPS PORT IN MCI")
+
                                             const gsmIdleMCIScenario = await this.msDataRepo.update({ dmPortNumber: dmPortNumberOfGpsPort, inspection: { id: inspection.id } }, { activeScenario: scenarioName.GSMIdleMCI })
 
                                             mciDMPorts = mciDMPorts.filter(ms => ms.dmPortNumber !== dmPortNumberOfGpsPort)
@@ -295,6 +297,8 @@ export class GPSService {
                                         }
 
                                         if (mtnDMPorts.map(ms => ms.dmPortNumber).includes(dmPortNumberOfGpsPort)) {
+                                            this.logger.warn("GPS PORT IN MTN")
+
                                             const gsmIdleMTNScenario = await this.msDataRepo.update({ dmPortNumber: dmPortNumberOfGpsPort, inspection: { id: inspection.id } }, { activeScenario: scenarioName.GSMIdleMTN })
 
                                             mtnDMPorts = mtnDMPorts.filter(ms => ms.dmPortNumber !== dmPortNumberOfGpsPort)
@@ -312,7 +316,7 @@ export class GPSService {
                                             const wcdmaLongCallMCIScenario = await this.msDataRepo.update({ dmPortNumber: mciDMPorts[4].dmPortNumber, inspection: { id: inspection.id } }, { activeScenario: scenarioName.WCDMALongCallMCI })
                                             const ftpDLMCIScenario = await this.msDataRepo.update({ dmPortNumber: mciDMPorts[5].dmPortNumber, inspection: { id: inspection.id } }, { activeScenario: scenarioName.FTP_DL_TH_MCI })
                                         }
-                                    
+
 
                                         this.logger.warn(`all scenarios set.`)
                                         this.initializingEnd = true

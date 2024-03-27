@@ -162,7 +162,7 @@ export class LTEIdleService {
                             })
                             const save = await this.lteIdlesRepo.save(newEntry)
 
-                            this.probSocketGateway.emitDTLTEIdle({ ...location, lteIdleSamplesMCI: [save] }, this.op)
+                            this.probSocketGateway.emitDTLTEIdle({ ...location, ['lteIdleSamples' + this.op]: [save] }, this.op)
                         }
                     }
                 }
@@ -221,7 +221,7 @@ export class LTEIdleService {
                             })
                             const save = await this.lteIdlesRepo.save(newEntry)
 
-                            this.probSocketGateway.emitDTLTEIdle({ ...location, lteIdleSamplesMCI: [save] }, this.op)
+                            this.probSocketGateway.emitDTLTEIdle({ ...location, ['lteIdleSamples' + this.op]: [save] }, this.op)
 
                         }
                     }

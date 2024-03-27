@@ -160,7 +160,7 @@ export class WCDMAIdleService {
                             })
                             const save = await this.wcdmaIdlesRepo.save(newEntry)
 
-                            this.probSocketGateway.emitDTWCDMAIdle({ ...location, wcdmaIdleSamplesMCI: [save] }, this.op)
+                            this.probSocketGateway.emitDTWCDMAIdle({ ...location, ['wcdmaIdleSamples' + this.op]: [save] }, this.op)
 
                         }
                     }
@@ -218,8 +218,8 @@ export class WCDMAIdleService {
                             })
                             const save = await this.wcdmaIdlesRepo.save(newEntry)
 
-                            this.probSocketGateway.emitDTWCDMAIdle({ ...location, wcdmaIdleSamplesMCI: [save] }, this.op)
-                            
+                            this.probSocketGateway.emitDTWCDMAIdle({ ...location, ['wcdmaIdleSamples' + this.op]: [save] }, this.op)
+
                         }
                     }
                 }

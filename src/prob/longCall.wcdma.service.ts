@@ -166,7 +166,7 @@ export class WCDMALongCallService {
                             })
                             const save = await this.wcdmaLongCallsRepo.save(newEntry)
 
-                            this.probSocketGateway.emitDTWCDMALongCall({ ...location, wcdmaLongCallSamplesMCI: [save] }, this.op)
+                            this.probSocketGateway.emitDTWCDMALongCall({ ...location, ['wcdmaLongCallSamples' + this.op]: [save] }, this.op)
 
                         }
                     }
@@ -225,7 +225,7 @@ export class WCDMALongCallService {
                             })
                             const save = await this.wcdmaLongCallsRepo.save(newEntry)
 
-                            this.probSocketGateway.emitDTWCDMALongCall({ ...location, wcdmaLongCallSamplesMCI: [save] }, this.op)
+                            this.probSocketGateway.emitDTWCDMALongCall({ ...location, ['wcdmaLongCallSamples' + this.op]: [save] }, this.op)
                         }
                     }
                 }
