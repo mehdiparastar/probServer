@@ -138,27 +138,32 @@ export class LTEIdleService {
                             .setParameter('desiredCreatedAt', new Date())
                             .getOne();
 
-                        const newEntry = this.lteIdlesRepo.create({
-                            tech: lteData.tech,
-                            is_tdd: lteData.is_tdd,
-                            mcc: lteData.mcc,
-                            mnc: lteData.mnc,
-                            cellid: lteData.cellid,
-                            pcid: lteData.pcid,
-                            earfcn: lteData.earfcn,
-                            freq_band_ind: lteData.freq_band_ind,
-                            ul_bandwidth: lteData.ul_bandwidth,
-                            dl_bandwidth: lteData.dl_bandwidth,
-                            tac: lteData.tac,
-                            rsrp: lteData.rsrp,
-                            rsrq: lteData.rsrq,
-                            rssi: lteData.rssi,
-                            sinr: lteData.sinr,
-                            srxlev: lteData.srxlev,
-                            inspection: inspection,
-                            location: location
-                        })
-                        const save = await this.lteIdlesRepo.save(newEntry)
+                        if (location !== null && location !== undefined) {
+
+                            const newEntry = this.lteIdlesRepo.create({
+                                tech: lteData.tech,
+                                is_tdd: lteData.is_tdd,
+                                mcc: lteData.mcc,
+                                mnc: lteData.mnc,
+                                cellid: lteData.cellid,
+                                pcid: lteData.pcid,
+                                earfcn: lteData.earfcn,
+                                freq_band_ind: lteData.freq_band_ind,
+                                ul_bandwidth: lteData.ul_bandwidth,
+                                dl_bandwidth: lteData.dl_bandwidth,
+                                tac: lteData.tac,
+                                rsrp: lteData.rsrp,
+                                rsrq: lteData.rsrq,
+                                rssi: lteData.rssi,
+                                sinr: lteData.sinr,
+                                srxlev: lteData.srxlev,
+                                inspection: inspection,
+                                location: location
+                            })
+                            const save = await this.lteIdlesRepo.save(newEntry)
+
+                            this.probSocketGateway.emitDTLTEIdle({ ...location, lteIdleSamplesMCI: [save] }, this.op)
+                        }
                     }
                 }
 
@@ -192,27 +197,33 @@ export class LTEIdleService {
                             .setParameter('desiredCreatedAt', new Date())
                             .getOne();
 
-                        const newEntry = this.lteIdlesRepo.create({
-                            tech: lteData_noCov.tech,
-                            is_tdd: lteData_noCov.is_tdd,
-                            mcc: lteData_noCov.mcc,
-                            mnc: lteData_noCov.mnc,
-                            cellid: lteData_noCov.cellid,
-                            pcid: lteData_noCov.pcid,
-                            earfcn: lteData_noCov.earfcn,
-                            freq_band_ind: lteData_noCov.freq_band_ind,
-                            ul_bandwidth: lteData_noCov.ul_bandwidth,
-                            dl_bandwidth: lteData_noCov.dl_bandwidth,
-                            tac: lteData_noCov.tac,
-                            rsrp: lteData_noCov.rsrp,
-                            rsrq: lteData_noCov.rsrq,
-                            rssi: lteData_noCov.rssi,
-                            sinr: lteData_noCov.sinr,
-                            srxlev: lteData_noCov.srxlev,
-                            inspection: inspection,
-                            location: location
-                        })
-                        const save = await this.lteIdlesRepo.save(newEntry)
+                        if (location !== null && location !== undefined) {
+
+                            const newEntry = this.lteIdlesRepo.create({
+                                tech: lteData_noCov.tech,
+                                is_tdd: lteData_noCov.is_tdd,
+                                mcc: lteData_noCov.mcc,
+                                mnc: lteData_noCov.mnc,
+                                cellid: lteData_noCov.cellid,
+                                pcid: lteData_noCov.pcid,
+                                earfcn: lteData_noCov.earfcn,
+                                freq_band_ind: lteData_noCov.freq_band_ind,
+                                ul_bandwidth: lteData_noCov.ul_bandwidth,
+                                dl_bandwidth: lteData_noCov.dl_bandwidth,
+                                tac: lteData_noCov.tac,
+                                rsrp: lteData_noCov.rsrp,
+                                rsrq: lteData_noCov.rsrq,
+                                rssi: lteData_noCov.rssi,
+                                sinr: lteData_noCov.sinr,
+                                srxlev: lteData_noCov.srxlev,
+                                inspection: inspection,
+                                location: location
+                            })
+                            const save = await this.lteIdlesRepo.save(newEntry)
+
+                            this.probSocketGateway.emitDTLTEIdle({ ...location, lteIdleSamplesMCI: [save] }, this.op)
+
+                        }
                     }
                 }
 

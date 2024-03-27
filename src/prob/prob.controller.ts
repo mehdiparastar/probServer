@@ -76,10 +76,54 @@ export class ProbController {
   }
 
   @Get('getDTCurrentGSMLockIdle_MCI')
-  getDTCurrentGSMLockIdle() {
+  getDTCurrentGSMLockIdle_MCI() {
     return this.probService.getDTCurrentGSMLockIdle("MCI")
   }
 
+  @Get('getDTCurrentGSMLockIdle_MTN')
+  getDTCurrentGSMLockIdle_MTN() {
+    return this.probService.getDTCurrentGSMLockIdle("MTN")
+  }
+
+  @Get('getDTCurrentWCDMALockIdle_MCI')
+  getDTCurrentWCDMALockIdle_MCI() {
+    return this.probService.getDTCurrentWCDMALockIdle("MCI")
+  }
+
+  @Get('getDTCurrentWCDMALockIdle_MTN')
+  getDTCurrentWCDMALockIdle_MTN() {
+    return this.probService.getDTCurrentWCDMALockIdle("MTN")
+  }
+
+  @Get('getDTCurrentLTELockIdle_MCI')
+  getDTCurrentLTELockIdle_MCI() {
+    return this.probService.getDTCurrentLTELockIdle("MCI")
+  }
+
+  @Get('getDTCurrentLTELockIdle_MTN')
+  getDTCurrentLTELockIdle_MTN() {
+    return this.probService.getDTCurrentLTELockIdle("MTN")
+  }
+
+  @Get('getDTCurrentGSMLockLongCall_MCI')
+  getDTCurrentGSMLockLongCall_MCI() {
+    return this.probService.getDTCurrentGSMLockLongCall("MCI")
+  }
+
+  @Get('getDTCurrentGSMLockLongCall_MTN')
+  getDTCurrentGSMLockLongCall_MTN() {
+    return this.probService.getDTCurrentGSMLockLongCall("MTN")
+  }
+
+  @Get('getDTCurrentWCDMALockLongCall_MCI')
+  getDTCurrentWCDMALockLongCall_MCI() {
+    return this.probService.getDTCurrentWCDMALockLongCall("MCI")
+  }
+
+  @Get('getDTCurrentWCDMALockLongCall_MTN')
+  getDTCurrentWCDMALockLongCall_MTN() {
+    return this.probService.getDTCurrentWCDMALockLongCall("MTN")
+  }
 
   // @Get(':id')
   // findOne(@Param('id') id: string) {

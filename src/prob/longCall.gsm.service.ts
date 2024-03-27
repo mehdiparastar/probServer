@@ -151,37 +151,42 @@ export class GSMLongCallService {
                             .setParameter('desiredCreatedAt', new Date())
                             .getOne();
 
-                        const newEntry = this.gsmLongCallsRepo.create({
-                            tech: gsmData.tech,
-                            mcc: gsmData.mcc,
-                            mnc: gsmData.mnc,
-                            lac: gsmData.lac,
-                            cellid: gsmData.cellid,
-                            bsic: gsmData.bsic,
-                            arfcn: gsmData.arfcn,
-                            bandgsm: gsmData.bandgsm,
-                            rxlev: gsmData.rxlev,
-                            txp: gsmData.txp,
-                            tla: gsmData.tla,
-                            drx: gsmData.drx,
-                            c1: gsmData.c1,
-                            c2: gsmData.c2,
-                            gprs: gsmData.gprs,
-                            tch: gsmData.tch,
-                            ts: gsmData.ts,
-                            ta: gsmData.ta,
-                            maio: gsmData.maio,
-                            hsn: gsmData.hsn,
-                            rxlevsub: gsmData.rxlevsub,
-                            rxlevfull: gsmData.rxlevfull,
-                            rxqualsub: gsmData.rxqualsub,
-                            rxqualfull: gsmData.rxqualfull,
-                            voicecodec: gsmData.voicecodec,
-                            callingStatus: this.currentCallStatus,
-                            inspection: inspection,
-                            location: location
-                        })
-                        const save = await this.gsmLongCallsRepo.save(newEntry)
+                        if (location !== null && location !== undefined) {
+
+                            const newEntry = this.gsmLongCallsRepo.create({
+                                tech: gsmData.tech,
+                                mcc: gsmData.mcc,
+                                mnc: gsmData.mnc,
+                                lac: gsmData.lac,
+                                cellid: gsmData.cellid,
+                                bsic: gsmData.bsic,
+                                arfcn: gsmData.arfcn,
+                                bandgsm: gsmData.bandgsm,
+                                rxlev: gsmData.rxlev,
+                                txp: gsmData.txp,
+                                tla: gsmData.tla,
+                                drx: gsmData.drx,
+                                c1: gsmData.c1,
+                                c2: gsmData.c2,
+                                gprs: gsmData.gprs,
+                                tch: gsmData.tch,
+                                ts: gsmData.ts,
+                                ta: gsmData.ta,
+                                maio: gsmData.maio,
+                                hsn: gsmData.hsn,
+                                rxlevsub: gsmData.rxlevsub,
+                                rxlevfull: gsmData.rxlevfull,
+                                rxqualsub: gsmData.rxqualsub,
+                                rxqualfull: gsmData.rxqualfull,
+                                voicecodec: gsmData.voicecodec,
+                                callingStatus: this.currentCallStatus,
+                                inspection: inspection,
+                                location: location
+                            })
+                            const save = await this.gsmLongCallsRepo.save(newEntry)
+
+                            this.probSocketGateway.emitDTGSMLongCall({ ...location, gsmLongCallSamplesMCI: [save] }, this.op)
+                        }
                     }
                 }
 
@@ -224,37 +229,42 @@ export class GSMLongCallService {
                             .setParameter('desiredCreatedAt', new Date())
                             .getOne();
 
-                        const newEntry = this.gsmLongCallsRepo.create({
-                            tech: gsmData_noCov.tech,
-                            mcc: gsmData_noCov.mcc,
-                            mnc: gsmData_noCov.mnc,
-                            lac: gsmData_noCov.lac,
-                            cellid: gsmData_noCov.cellid,
-                            bsic: gsmData_noCov.bsic,
-                            arfcn: gsmData_noCov.arfcn,
-                            bandgsm: gsmData_noCov.bandgsm,
-                            rxlev: gsmData_noCov.rxlev,
-                            txp: gsmData_noCov.txp,
-                            tla: gsmData_noCov.tla,
-                            drx: gsmData_noCov.drx,
-                            c1: gsmData_noCov.c1,
-                            c2: gsmData_noCov.c2,
-                            gprs: gsmData_noCov.gprs,
-                            tch: gsmData_noCov.tch,
-                            ts: gsmData_noCov.ts,
-                            ta: gsmData_noCov.ta,
-                            maio: gsmData_noCov.maio,
-                            hsn: gsmData_noCov.hsn,
-                            rxlevsub: gsmData_noCov.rxlevsub,
-                            rxlevfull: gsmData_noCov.rxlevfull,
-                            rxqualsub: gsmData_noCov.rxqualsub,
-                            rxqualfull: gsmData_noCov.rxqualfull,
-                            voicecodec: gsmData_noCov.voicecodec,
-                            callingStatus: this.currentCallStatus,
-                            inspection: inspection,
-                            location: location
-                        })
-                        const save = await this.gsmLongCallsRepo.save(newEntry)
+                        if (location !== null && location !== undefined) {
+
+                            const newEntry = this.gsmLongCallsRepo.create({
+                                tech: gsmData_noCov.tech,
+                                mcc: gsmData_noCov.mcc,
+                                mnc: gsmData_noCov.mnc,
+                                lac: gsmData_noCov.lac,
+                                cellid: gsmData_noCov.cellid,
+                                bsic: gsmData_noCov.bsic,
+                                arfcn: gsmData_noCov.arfcn,
+                                bandgsm: gsmData_noCov.bandgsm,
+                                rxlev: gsmData_noCov.rxlev,
+                                txp: gsmData_noCov.txp,
+                                tla: gsmData_noCov.tla,
+                                drx: gsmData_noCov.drx,
+                                c1: gsmData_noCov.c1,
+                                c2: gsmData_noCov.c2,
+                                gprs: gsmData_noCov.gprs,
+                                tch: gsmData_noCov.tch,
+                                ts: gsmData_noCov.ts,
+                                ta: gsmData_noCov.ta,
+                                maio: gsmData_noCov.maio,
+                                hsn: gsmData_noCov.hsn,
+                                rxlevsub: gsmData_noCov.rxlevsub,
+                                rxlevfull: gsmData_noCov.rxlevfull,
+                                rxqualsub: gsmData_noCov.rxqualsub,
+                                rxqualfull: gsmData_noCov.rxqualfull,
+                                voicecodec: gsmData_noCov.voicecodec,
+                                callingStatus: this.currentCallStatus,
+                                inspection: inspection,
+                                location: location
+                            })
+                            const save = await this.gsmLongCallsRepo.save(newEntry)
+
+                            this.probSocketGateway.emitDTGSMLongCall({ ...location, gsmLongCallSamplesMCI: [save] }, this.op)
+                        }
                     }
                 }
 

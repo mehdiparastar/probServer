@@ -148,38 +148,41 @@ export class GSMIdleService {
                             .setParameter('desiredCreatedAt', new Date())
                             .getOne();
 
-                        const newEntry = this.gsmIdlesRepo.create({
-                            tech: gsmData.tech,
-                            mcc: gsmData.mcc,
-                            mnc: gsmData.mnc,
-                            lac: gsmData.lac,
-                            cellid: gsmData.cellid,
-                            bsic: gsmData.bsic,
-                            arfcn: gsmData.arfcn,
-                            bandgsm: gsmData.bandgsm,
-                            rxlev: gsmData.rxlev,
-                            txp: gsmData.txp,
-                            tla: gsmData.tla,
-                            drx: gsmData.drx,
-                            c1: gsmData.c1,
-                            c2: gsmData.c2,
-                            gprs: gsmData.gprs,
-                            tch: gsmData.tch,
-                            ts: gsmData.ts,
-                            ta: gsmData.ta,
-                            maio: gsmData.maio,
-                            hsn: gsmData.hsn,
-                            rxlevsub: gsmData.rxlevsub,
-                            rxlevfull: gsmData.rxlevfull,
-                            rxqualsub: gsmData.rxqualsub,
-                            rxqualfull: gsmData.rxqualfull,
-                            voicecodec: gsmData.voicecodec,
-                            inspection: inspection,
-                            location: location
-                        })
-                        const save = await this.gsmIdlesRepo.save(newEntry)
+                        if (location !== null && location !== undefined) {
 
-                        this.probSocketGateway.emitDTGSMIdle({ ...location, gsmIdleSamplesMCI: [save] }, this.op)
+                            const newEntry = this.gsmIdlesRepo.create({
+                                tech: gsmData.tech,
+                                mcc: gsmData.mcc,
+                                mnc: gsmData.mnc,
+                                lac: gsmData.lac,
+                                cellid: gsmData.cellid,
+                                bsic: gsmData.bsic,
+                                arfcn: gsmData.arfcn,
+                                bandgsm: gsmData.bandgsm,
+                                rxlev: gsmData.rxlev,
+                                txp: gsmData.txp,
+                                tla: gsmData.tla,
+                                drx: gsmData.drx,
+                                c1: gsmData.c1,
+                                c2: gsmData.c2,
+                                gprs: gsmData.gprs,
+                                tch: gsmData.tch,
+                                ts: gsmData.ts,
+                                ta: gsmData.ta,
+                                maio: gsmData.maio,
+                                hsn: gsmData.hsn,
+                                rxlevsub: gsmData.rxlevsub,
+                                rxlevfull: gsmData.rxlevfull,
+                                rxqualsub: gsmData.rxqualsub,
+                                rxqualfull: gsmData.rxqualfull,
+                                voicecodec: gsmData.voicecodec,
+                                inspection: inspection,
+                                location: location
+                            })
+                            const save = await this.gsmIdlesRepo.save(newEntry)
+
+                            this.probSocketGateway.emitDTGSMIdle({ ...location, gsmIdleSamplesMCI: [save] }, this.op)
+                        }
 
                         if (location === null || location === undefined || !location.latitude) {
                             this.logger.log('err in location', location)
@@ -222,7 +225,6 @@ export class GSMIdleService {
                             'voicecodec': '-',
                         }
 
-
                         const location = await this.gpsDataRepo
                             .createQueryBuilder('gps_data')
                             .where('ABS(TIMESTAMPDIFF(MICROSECOND, createdAt, :desiredCreatedAt)) <= 2000000') // One second has 1,000,000 microseconds
@@ -230,36 +232,42 @@ export class GSMIdleService {
                             .setParameter('desiredCreatedAt', new Date())
                             .getOne();
 
-                        const newEntry = this.gsmIdlesRepo.create({
-                            tech: gsmIdleData_noCov.tech,
-                            mcc: gsmIdleData_noCov.mcc,
-                            mnc: gsmIdleData_noCov.mnc,
-                            lac: gsmIdleData_noCov.lac,
-                            cellid: gsmIdleData_noCov.cellid,
-                            bsic: gsmIdleData_noCov.bsic,
-                            arfcn: gsmIdleData_noCov.arfcn,
-                            bandgsm: gsmIdleData_noCov.bandgsm,
-                            rxlev: gsmIdleData_noCov.rxlev,
-                            txp: gsmIdleData_noCov.txp,
-                            tla: gsmIdleData_noCov.tla,
-                            drx: gsmIdleData_noCov.drx,
-                            c1: gsmIdleData_noCov.c1,
-                            c2: gsmIdleData_noCov.c2,
-                            gprs: gsmIdleData_noCov.gprs,
-                            tch: gsmIdleData_noCov.tch,
-                            ts: gsmIdleData_noCov.ts,
-                            ta: gsmIdleData_noCov.ta,
-                            maio: gsmIdleData_noCov.maio,
-                            hsn: gsmIdleData_noCov.hsn,
-                            rxlevsub: gsmIdleData_noCov.rxlevsub,
-                            rxlevfull: gsmIdleData_noCov.rxlevfull,
-                            rxqualsub: gsmIdleData_noCov.rxqualsub,
-                            rxqualfull: gsmIdleData_noCov.rxqualfull,
-                            voicecodec: gsmIdleData_noCov.voicecodec,
-                            inspection: inspection,
-                            location: location
-                        })
-                        const save = await this.gsmIdlesRepo.save(newEntry)
+                        if (location !== null && location !== undefined) {
+                            
+                            const newEntry = this.gsmIdlesRepo.create({
+                                tech: gsmIdleData_noCov.tech,
+                                mcc: gsmIdleData_noCov.mcc,
+                                mnc: gsmIdleData_noCov.mnc,
+                                lac: gsmIdleData_noCov.lac,
+                                cellid: gsmIdleData_noCov.cellid,
+                                bsic: gsmIdleData_noCov.bsic,
+                                arfcn: gsmIdleData_noCov.arfcn,
+                                bandgsm: gsmIdleData_noCov.bandgsm,
+                                rxlev: gsmIdleData_noCov.rxlev,
+                                txp: gsmIdleData_noCov.txp,
+                                tla: gsmIdleData_noCov.tla,
+                                drx: gsmIdleData_noCov.drx,
+                                c1: gsmIdleData_noCov.c1,
+                                c2: gsmIdleData_noCov.c2,
+                                gprs: gsmIdleData_noCov.gprs,
+                                tch: gsmIdleData_noCov.tch,
+                                ts: gsmIdleData_noCov.ts,
+                                ta: gsmIdleData_noCov.ta,
+                                maio: gsmIdleData_noCov.maio,
+                                hsn: gsmIdleData_noCov.hsn,
+                                rxlevsub: gsmIdleData_noCov.rxlevsub,
+                                rxlevfull: gsmIdleData_noCov.rxlevfull,
+                                rxqualsub: gsmIdleData_noCov.rxqualsub,
+                                rxqualfull: gsmIdleData_noCov.rxqualfull,
+                                voicecodec: gsmIdleData_noCov.voicecodec,
+                                inspection: inspection,
+                                location: location
+                            })
+                            const save = await this.gsmIdlesRepo.save(newEntry)
+
+                            this.probSocketGateway.emitDTGSMIdle({ ...location, gsmIdleSamplesMCI: [save] }, this.op)
+
+                        }
                     }
                 }
 

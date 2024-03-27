@@ -699,10 +699,62 @@ export class ProbService implements OnModuleInit {
   async getDTCurrentGSMLockIdle(op: "MCI" | "MTN") {
     if (this.portsInitialized && this.gpsInitialized && this.inspection && op === "MCI") {
       const gsmIdleData = await this.gpsDataRepo.find({ where: { inspection: { id: this.inspection.id } }, relations: { gsmIdleSamplesMCI: true } })
-      return gsmIdleData
+      return gsmIdleData.filter(item => item.gsmIdleSamplesMCI.length > 0)
     } else if (this.portsInitialized && this.gpsInitialized && this.inspection && op === "MTN") {
       const gsmIdleData = await this.gpsDataRepo.find({ where: { inspection: { id: this.inspection.id } }, relations: { gsmIdleSamplesMTN: true } })
-      return gsmIdleData
+      return gsmIdleData.filter(item => item.gsmIdleSamplesMTN.length > 0)
+    }
+    else {
+      return ([])
+    }
+  }
+
+  async getDTCurrentWCDMALockIdle(op: "MCI" | "MTN") {
+    if (this.portsInitialized && this.gpsInitialized && this.inspection && op === "MCI") {
+      const wcdmaIdleData = await this.gpsDataRepo.find({ where: { inspection: { id: this.inspection.id } }, relations: { wcdmaIdleSamplesMCI: true } })
+      return wcdmaIdleData.filter(item => item.wcdmaIdleSamplesMCI.length > 0)
+    } else if (this.portsInitialized && this.gpsInitialized && this.inspection && op === "MTN") {
+      const wcdmaIdleData = await this.gpsDataRepo.find({ where: { inspection: { id: this.inspection.id } }, relations: { wcdmaIdleSamplesMTN: true } })
+      return wcdmaIdleData.filter(item => item.wcdmaIdleSamplesMTN.length > 0)
+    }
+    else {
+      return ([])
+    }
+  }
+
+  async getDTCurrentLTELockIdle(op: "MCI" | "MTN") {
+    if (this.portsInitialized && this.gpsInitialized && this.inspection && op === "MCI") {
+      const lteIdleData = await this.gpsDataRepo.find({ where: { inspection: { id: this.inspection.id } }, relations: { lteIdleSamplesMCI: true } })
+      return lteIdleData.filter(item => item.lteIdleSamplesMCI.length > 0)
+    } else if (this.portsInitialized && this.gpsInitialized && this.inspection && op === "MTN") {
+      const lteIdleData = await this.gpsDataRepo.find({ where: { inspection: { id: this.inspection.id } }, relations: { lteIdleSamplesMTN: true } })
+      return lteIdleData.filter(item => item.lteIdleSamplesMTN.length > 0)
+    }
+    else {
+      return ([])
+    }
+  }
+
+  async getDTCurrentGSMLockLongCall(op: "MCI" | "MTN") {
+    if (this.portsInitialized && this.gpsInitialized && this.inspection && op === "MCI") {
+      const gsmLongCallData = await this.gpsDataRepo.find({ where: { inspection: { id: this.inspection.id } }, relations: { gsmLongCallSamplesMCI: true } })
+      return gsmLongCallData.filter(item => item.gsmLongCallSamplesMCI.length > 0)
+    } else if (this.portsInitialized && this.gpsInitialized && this.inspection && op === "MTN") {
+      const gsmLongCallData = await this.gpsDataRepo.find({ where: { inspection: { id: this.inspection.id } }, relations: { gsmLongCallSamplesMTN: true } })
+      return gsmLongCallData.filter(item => item.gsmLongCallSamplesMTN.length > 0)
+    }
+    else {
+      return ([])
+    }
+  }
+
+  async getDTCurrentWCDMALockLongCall(op: "MCI" | "MTN") {
+    if (this.portsInitialized && this.gpsInitialized && this.inspection && op === "MCI") {
+      const wcdmaLongCallData = await this.gpsDataRepo.find({ where: { inspection: { id: this.inspection.id } }, relations: { wcdmaLongCallSamplesMCI: true } })
+      return wcdmaLongCallData.filter(item => item.wcdmaLongCallSamplesMCI.length > 0)
+    } else if (this.portsInitialized && this.gpsInitialized && this.inspection && op === "MTN") {
+      const wcdmaLongCallData = await this.gpsDataRepo.find({ where: { inspection: { id: this.inspection.id } }, relations: { wcdmaLongCallSamplesMTN: true } })
+      return wcdmaLongCallData.filter(item => item.wcdmaLongCallSamplesMTN.length > 0)
     }
     else {
       return ([])

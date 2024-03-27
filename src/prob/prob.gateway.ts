@@ -99,6 +99,22 @@ export class ProbGateway
   emitDTGSMIdle(gsmIdleData: GPSData, op: "MCI" | "MTN") {
     this.io.to(probSocketInItRoom).emit('dtCurrentGSMLockIdle' + "_" + op, gsmIdleData)
   }
+
+  emitDTWCDMAIdle(wcdmaIdleData: GPSData, op: "MCI" | "MTN") {
+    this.io.to(probSocketInItRoom).emit('dtCurrentWCDMALockIdle' + "_" + op, wcdmaIdleData)
+  }
+
+  emitDTLTEIdle(lteIdleData: GPSData, op: "MCI" | "MTN") {
+    this.io.to(probSocketInItRoom).emit('dtCurrentLTELockIdle' + "_" + op, lteIdleData)
+  }
+
+  emitDTGSMLongCall(gsmLongCallData: GPSData, op: "MCI" | "MTN") {
+    this.io.to(probSocketInItRoom).emit('dtCurrentGSMLockLongCall' + "_" + op, gsmLongCallData)
+  }
+
+  emitDTWCDMALongCall(wcdmaLongCallData: GPSData, op: "MCI" | "MTN") {
+    this.io.to(probSocketInItRoom).emit('dtCurrentWCDMALockLongCall' + "_" + op, wcdmaLongCallData)
+  }
 }
 
 

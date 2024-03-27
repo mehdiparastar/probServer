@@ -142,27 +142,33 @@ export class WCDMALongCallService {
                             .setParameter('desiredCreatedAt', new Date())
                             .getOne();
 
-                        const newEntry = this.wcdmaLongCallsRepo.create({
-                            tech: wcdmaData.tech,
-                            mcc: wcdmaData.mcc,
-                            mnc: wcdmaData.mnc,
-                            lac: wcdmaData.lac,
-                            cellid: wcdmaData.cellid,
-                            uarfcn: wcdmaData.uarfcn,
-                            psc: wcdmaData.psc,
-                            rac: wcdmaData.rac,
-                            rscp: wcdmaData.rscp,
-                            ecio: wcdmaData.ecio,
-                            phych: wcdmaData.phych,
-                            sf: wcdmaData.sf,
-                            slot: wcdmaData.slot,
-                            speech_code: wcdmaData.speech_code,
-                            comMod: wcdmaData.comMod,
-                            callingStatus: this.currentCallStatus,
-                            inspection: inspection,
-                            location: location
-                        })
-                        const save = await this.wcdmaLongCallsRepo.save(newEntry)
+                        if (location !== null && location !== undefined) {
+
+                            const newEntry = this.wcdmaLongCallsRepo.create({
+                                tech: wcdmaData.tech,
+                                mcc: wcdmaData.mcc,
+                                mnc: wcdmaData.mnc,
+                                lac: wcdmaData.lac,
+                                cellid: wcdmaData.cellid,
+                                uarfcn: wcdmaData.uarfcn,
+                                psc: wcdmaData.psc,
+                                rac: wcdmaData.rac,
+                                rscp: wcdmaData.rscp,
+                                ecio: wcdmaData.ecio,
+                                phych: wcdmaData.phych,
+                                sf: wcdmaData.sf,
+                                slot: wcdmaData.slot,
+                                speech_code: wcdmaData.speech_code,
+                                comMod: wcdmaData.comMod,
+                                callingStatus: this.currentCallStatus,
+                                inspection: inspection,
+                                location: location
+                            })
+                            const save = await this.wcdmaLongCallsRepo.save(newEntry)
+
+                            this.probSocketGateway.emitDTWCDMALongCall({ ...location, wcdmaLongCallSamplesMCI: [save] }, this.op)
+
+                        }
                     }
                 }
 
@@ -195,27 +201,32 @@ export class WCDMALongCallService {
                             .setParameter('desiredCreatedAt', new Date())
                             .getOne();
 
-                        const newEntry = this.wcdmaLongCallsRepo.create({
-                            tech: wcdmaData_noCov.tech,
-                            mcc: wcdmaData_noCov.mcc,
-                            mnc: wcdmaData_noCov.mnc,
-                            lac: wcdmaData_noCov.lac,
-                            cellid: wcdmaData_noCov.cellid,
-                            uarfcn: wcdmaData_noCov.uarfcn,
-                            psc: wcdmaData_noCov.psc,
-                            rac: wcdmaData_noCov.rac,
-                            rscp: wcdmaData_noCov.rscp,
-                            ecio: wcdmaData_noCov.ecio,
-                            phych: wcdmaData_noCov.phych,
-                            sf: wcdmaData_noCov.sf,
-                            slot: wcdmaData_noCov.slot,
-                            speech_code: wcdmaData_noCov.speech_code,
-                            comMod: wcdmaData_noCov.comMod,
-                            callingStatus: this.currentCallStatus,
-                            inspection: inspection,
-                            location: location
-                        })
-                        const save = await this.wcdmaLongCallsRepo.save(newEntry)
+                        if (location !== null && location !== undefined) {
+
+                            const newEntry = this.wcdmaLongCallsRepo.create({
+                                tech: wcdmaData_noCov.tech,
+                                mcc: wcdmaData_noCov.mcc,
+                                mnc: wcdmaData_noCov.mnc,
+                                lac: wcdmaData_noCov.lac,
+                                cellid: wcdmaData_noCov.cellid,
+                                uarfcn: wcdmaData_noCov.uarfcn,
+                                psc: wcdmaData_noCov.psc,
+                                rac: wcdmaData_noCov.rac,
+                                rscp: wcdmaData_noCov.rscp,
+                                ecio: wcdmaData_noCov.ecio,
+                                phych: wcdmaData_noCov.phych,
+                                sf: wcdmaData_noCov.sf,
+                                slot: wcdmaData_noCov.slot,
+                                speech_code: wcdmaData_noCov.speech_code,
+                                comMod: wcdmaData_noCov.comMod,
+                                callingStatus: this.currentCallStatus,
+                                inspection: inspection,
+                                location: location
+                            })
+                            const save = await this.wcdmaLongCallsRepo.save(newEntry)
+
+                            this.probSocketGateway.emitDTWCDMALongCall({ ...location, wcdmaLongCallSamplesMCI: [save] }, this.op)
+                        }
                     }
                 }
 
