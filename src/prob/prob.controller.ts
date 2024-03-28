@@ -6,6 +6,8 @@ import { ATCommandDto } from './dto/AT-command.dto'
 import { StartLogDto } from './dto/start-log.dto';
 import { dtCurrentStatusENUM } from './enum/dtcurrentStatus.enum';
 import { Response } from 'express';
+import { Serialize } from 'src/interceptors/serialize.interceptor';
+import { InspectionDto } from './dto/inspection.dto';
 
 
 @Controller('prob')
@@ -125,10 +127,23 @@ export class ProbController {
     return this.probService.getDTCurrentWCDMALockLongCall("MTN")
   }
 
-  // @Get(':id')
-  // findOne(@Param('id') id: string) {
-  //   return this.probService.findOne(+id);
-  // }
+  @Get('getAllInspections')
+  @Serialize(InspectionDto)
+  getAllInspections() {
+    return this.probService.getAllInspections();
+  }
+
+  @Get('getCurrentActiveInspection')
+  @Serialize(InspectionDto)
+  getCurrentActiveInspection() {
+    return this.probService.getCurrentActiveInspection();
+  }
+
+  @Post('find-ms-details')
+  findMSDetails(@Body() body: { inspectionId: number }) {
+    return this.probService.findMSDetails(body.inspectionId)
+  }
+
 
   // @Patch(':id')
   // update(@Param('id') id: string, @Body() updateProbDto: UpdateProbDto) {

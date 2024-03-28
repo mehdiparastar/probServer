@@ -760,4 +760,18 @@ export class ProbService implements OnModuleInit {
       return ([])
     }
   }
+
+  async getAllInspections() {
+    return await this.inspectionsRepo.find()
+  }
+
+  async getCurrentActiveInspection() {
+    if (this.inspection?.id)
+      return await this.inspectionsRepo.findOne({ where: { id: this.inspection.id } })
+    return null
+  }
+
+  async findMSDetails(inspectionId: number) {
+    return await this.msDataRepo.find({ where: { inspection: { id: inspectionId } }, order: { IMSI: "ASC", dmPortNumber: "ASC" } })
+  }
 }
